@@ -36,9 +36,11 @@ photo tree. Test both backups together.
 3. Restore `/etc/viltkamera-metadata` and reinstall the service definitions.
 4. Restore PiGallery `config/` and `db/` with its container stopped.
 5. Restore the verified-sightings registry (normally already inside config).
-6. Recreate mounts, starting SFTPGo before the metadata watcher and PiGallery.
-7. Confirm PiGallery's photo mount is read-only.
-8. Validate logins, one upload, metadata, the map and a verified sighting.
+6. Restore the Caddy configuration, `viltkamera.html`, and the protected
+   `grunneiertillatelse.jpg` without changing the QR-code URL.
+7. Recreate mounts, starting SFTPGo before the metadata watcher and PiGallery.
+8. Confirm PiGallery's photo mount is read-only.
+9. Validate logins, one upload, metadata, the map and a verified sighting.
 
 Never restore only PiGallery's SQLite database while pairing it with a
 different config or photo-tree layout without first testing in a disposable

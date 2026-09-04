@@ -16,6 +16,7 @@ verified-sightings.json
 photos/
 private/
 secrets/
+information-site/grunneiertillatelse.jpg
 *.key
 *.pem
 *.gpx

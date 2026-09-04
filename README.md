@@ -5,9 +5,11 @@ SFTPGo, enriching new JPEG files with camera metadata, browsing them in
 PiGallery2, marking verified animal sightings, showing named GPX waypoints,
 and importing a Norwegian Grafana dashboard.
 
-The repository is deliberately sanitized. It contains examples only—no
-photos, credentials, user databases, production hostnames, or real camera and
-hunting coordinates.
+The repository contains no photos, credentials, user databases, or real camera
+and hunting coordinates. The QR-code information page intentionally preserves
+its already-public service URLs and contact text so it can be restored without
+changing the physical camera labels. Keep repository access appropriately
+restricted.
 
 ## What is included
 
@@ -22,6 +24,8 @@ hunting coordinates.
   symbol and type, shows human-readable popups, and colors marker categories.
 - An importable Norwegian Grafana dashboard using an InfluxDB/Flux datasource
   selected during import.
+- The Caddy-hosted Norwegian camera-information page used by the physical QR
+  codes.
 - Sanitized configuration and GPX examples, backup guidance and recovery
   notes.
 
@@ -80,6 +84,9 @@ and retest them before upgrading PiGallery2.
    input to the desired InfluxDB 2.x Flux datasource.
 8. Configure a reverse proxy/TLS for PiGallery2. Keep SFTPGo WebAdmin and the
    camera admin UI private.
+9. Deploy `information-site/viltkamera.html` to `/var/www/html/` on the Caddy
+   host. Preserve `https://8370.no/viltkamera.html` because physical camera QR
+   codes point to it.
 
 The official projects recommend Docker for PiGallery2 and provide both native
 and containerized SFTPGo deployments:
@@ -97,7 +104,9 @@ Back up these independently:
 - PiGallery2 `config/` and `db/`
 - `config/extensions/verified-sightings/verified-sightings.json`
 - private production GPX files
-- reverse-proxy and TLS configuration
+- `/var/www/html/viltkamera.html` and the separately protected
+  `grunneiertillatelse.jpg`
+- reverse-proxy/Caddy and TLS configuration
 
 `scripts/backup-state.sh` captures configuration/state, not the photo library.
 See [docs/operations.md](docs/operations.md) for restore and upgrade procedure.
@@ -121,6 +130,7 @@ docs/                          architecture, install, maps and operations
 extensions/verified-sightings/ PiGallery logical album extension
 gpx/example.gpx                fake-coordinate GPX schema example
 grafana/                       Norwegian dashboard JSON
+information-site/              Caddy-hosted QR-code information page
 metadata/                      watcher and systemd service
 pigallery2-map/                PiGallery2 3.5.2 overlay and build script
 scripts/                       install, backup and validation helpers

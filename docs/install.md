@@ -127,13 +127,26 @@ Terminate TLS at the preferred reverse proxy and proxy only PiGallery's HTTP
 port. Preserve normal forwarding headers and WebSocket support. Do not bypass
 PiGallery authentication just because the URL is public.
 
-## 9. Grafana (optional)
+## 9. QR-code information page
+
+Keep the existing public URL stable because it is encoded in labels attached
+to the physical cameras:
+
+```bash
+install -o root -g root -m 0644 \
+  information-site/viltkamera.html /var/www/html/viltkamera.html
+```
+
+Restore `/var/www/html/grunneiertillatelse.jpg` from protected backup. It is
+not stored in Git. See `information-site/README.md`.
+
+## 10. Grafana (optional)
 
 Import `grafana/viltkamera-grafana-dashboard-no.json`, choose the InfluxDB 2.x
 Flux datasource when prompted, and verify the default 48-hour range. The
 dashboard contains no datasource UID or credentials.
 
-## 10. Acceptance test
+## 11. Acceptance test
 
 Run `scripts/validate-deployment.sh` locally on each relevant host, then test:
 
@@ -144,3 +157,5 @@ Run `scripts/validate-deployment.sh` locally on each relevant host, then test:
 5. the map shows named/color-coded GPX pins and tracks;
 6. the photo tree remains read-only from the PiGallery host;
 7. backups can be restored into a disposable instance.
+8. `https://8370.no/viltkamera.html?id=hc960-01` retains its public URL and
+   displays the selected camera ID.
