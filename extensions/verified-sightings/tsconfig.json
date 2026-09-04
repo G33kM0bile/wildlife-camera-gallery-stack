@@ -1,0 +1,18 @@
+{
+  "compileOnSave": true,
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "declaration": false,
+    "downlevelIteration": true,
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "module": "CommonJS",
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "lib": ["ES2022"]
+  },
+  "exclude": ["node_modules", "test.js"]
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="wildlife-camera-gallery-stack"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <wpt lat="60.001" lon="10.001">
+    <name>Camera 1 | North crossing</name>
+    <desc>Wildlife camera</desc>
+    <sym>Camera</sym>
+    <type>camera</type>
+  </wpt>
+  <wpt lat="60.002" lon="10.002">
+    <name>Parking</name>
+    <desc>Access point</desc>
+    <sym>Parking Area</sym>
+    <type>access</type>
+  </wpt>
+  <trk>
+    <name>Example boundary</name>
+    <trkseg>
+      <trkpt lat="60.000" lon="10.000"/>
+      <trkpt lat="60.000" lon="10.010"/>
+      <trkpt lat="60.010" lon="10.010"/>
+      <trkpt lat="60.010" lon="10.000"/>
+      <trkpt lat="60.000" lon="10.000"/>
+    </trkseg>
+  </trk>
+</gpx>

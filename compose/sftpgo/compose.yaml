@@ -1,0 +1,23 @@
+services:
+  sftpgo:
+    image: ${SFTPGO_IMAGE:-drakkan/sftpgo:2.7.x}
+    container_name: sftpgo
+    environment:
+      SFTPGO_LOG_FILE_PATH: ""
+    volumes:
+      - ${PHOTO_ROOT_PARENT:-/srv/sftpgo}:/srv/sftpgo
+      - ${SFTPGO_STATE:-/var/lib/sftpgo}:/var/lib/sftpgo
+    ports:
+      - ${SFTPGO_SFTP_BIND:-0.0.0.0}:${SFTPGO_SFTP_PORT:-2022}:2022
+      - ${SFTPGO_WEB_BIND:-127.0.0.1}:${SFTPGO_WEB_PORT:-8080}:8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sftpgo", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+
+# The native-systemd SFTPGo layout is the reference deployment for this repo.
+# If this Compose alternative is used, run the metadata watcher on the host and
+# ensure its `sftpgo` account can write files owned by the container's UID 1000.

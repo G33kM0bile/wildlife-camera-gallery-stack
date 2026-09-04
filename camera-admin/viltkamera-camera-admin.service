@@ -1,0 +1,38 @@
+[Unit]
+Description=Web editor for wildlife camera metadata configuration
+After=network-online.target sftpgo.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=viltkamera-admin
+Group=viltkamera-config
+WorkingDirectory=/opt/viltkamera-camera-admin
+Environment=PYTHONUNBUFFERED=1
+Environment=CAMERA_ADMIN_BIND=127.0.0.1
+Environment=CAMERA_ADMIN_PORT=9095
+Environment=CAMERA_ADMIN_CONFIG=/etc/viltkamera-metadata/cameras.json
+Environment=CAMERA_ADMIN_HISTORY=/etc/viltkamera-metadata/history
+Environment=SFTPGO_API_URL=http://127.0.0.1:8080
+ExecStart=/usr/bin/python3 -B /opt/viltkamera-camera-admin/app.py
+Restart=on-failure
+RestartSec=3
+UMask=0007
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+ReadWritePaths=/etc/viltkamera-metadata
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "updated_at": "2026-01-01T00:00:00Z",
+  "managed_keywords": [
+    "wildlife-camera",
+    "camera-01",
+    "camera-02",
+    "camera-03",
+    "camera-04",
+    "camera-05"
+  ],
+  "cameras": [
+    {
+      "id": "hc960-01",
+      "number": 1,
+      "enabled": true,
+      "title": "Camera 1 | North crossing",
+      "subject": "Camera 1 | North crossing",
+      "comment": "",
+      "tags": ["wildlife-camera", "camera-01", "North crossing"],
+      "location": "North crossing",
+      "latitude": 60.001,
+      "longitude": 10.001
+    },
+    {
+      "id": "hc960-02",
+      "number": 2,
+      "enabled": true,
+      "title": "Camera 2 | Creek",
+      "subject": "Camera 2 | Creek",
+      "comment": "",
+      "tags": ["wildlife-camera", "camera-02", "Creek"],
+      "location": "Creek",
+      "latitude": 60.002,
+      "longitude": 10.002
+    },
+    {
+      "id": "hc960-03",
+      "number": 3,
+      "enabled": true,
+      "title": "Camera 3 | Forest edge",
+      "subject": "Camera 3 | Forest edge",
+      "comment": "",
+      "tags": ["wildlife-camera", "camera-03", "Forest edge"],
+      "location": "Forest edge",
+      "latitude": 60.003,
+      "longitude": 10.003
+    },
+    {
+      "id": "hc960-04",
+      "number": 4,
+      "enabled": true,
+      "title": "Camera 4 | Lower trail",
+      "subject": "Camera 4 | Lower trail",
+      "comment": "",
+      "tags": ["wildlife-camera", "camera-04", "Lower trail"],
+      "location": "Lower trail",
+      "latitude": 60.004,
+      "longitude": 10.004
+    },
+    {
+      "id": "hc960-05",
+      "number": 5,
+      "enabled": true,
+      "title": "Camera 5 | Upper trail",
+      "subject": "Camera 5 | Upper trail",
+      "comment": "",
+      "tags": ["wildlife-camera", "camera-05", "Upper trail"],
+      "location": "Upper trail",
+      "latitude": 60.005,
+      "longitude": 10.005
+    }
+  ]
+}

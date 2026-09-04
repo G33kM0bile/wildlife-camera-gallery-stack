@@ -1,0 +1,19 @@
+#!/bin/bash
+set -u
+
+readonly ROOT=/srv/sftpgo/data
+readonly TAGGER=/usr/local/sbin/viltkamera-metadata
+
+while IFS= read -r -d '' file; do
+  if output=$($TAGGER "$file" 2>&1); then
+    if [[ -n "$output" ]]; then
+      logger -t viltkamera-metadata -- "$output"
+    fi
+  else
+    logger -p user.err -t viltkamera-metadata -- "$output"
+  fi
+done < <(
+  /usr/bin/inotifywait --monitor --recursive --quiet \
+    --event close_write --event moved_to \
+    --format '%w%f%0' --no-newline "$ROOT"
+)

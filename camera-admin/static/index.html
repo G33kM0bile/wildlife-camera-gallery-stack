@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0d1412">
+    <title>Kameraoppsett · Viltkamera</title>
+    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+    <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v=1.9.4">
+    <link rel="stylesheet" href="/static/styles.css?v=1.2.0">
+  </head>
+  <body>
+    <div id="login-view" class="login-shell" hidden>
+      <main class="login-card" aria-labelledby="login-title">
+        <div class="brand-mark" aria-hidden="true">🦌</div>
+        <p class="eyebrow">Viltkamera</p>
+        <h1 id="login-title">Kameraoppsett</h1>
+        <p class="login-copy">Logg inn med en SFTPGo-administrator for å endre plassering og metadata for nye bilder.</p>
+        <form id="login-form" novalidate>
+          <label>
+            Administratornavn
+            <input name="username" autocomplete="username" required maxlength="128">
+          </label>
+          <label>
+            Passord
+            <input name="password" type="password" autocomplete="current-password" required maxlength="512">
+          </label>
+          <p id="login-error" class="form-error" role="alert" hidden></p>
+          <button class="primary-button full-width" type="submit">Logg inn</button>
+        </form>
+        <p class="privacy-note">Siden er bare tilgjengelig på lokalnett eller VPN. Passordet lagres ikke.</p>
+      </main>
+    </div>
+
+    <div id="app-view" class="app-shell" hidden>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark small" aria-hidden="true">🦌</span>
+          <div>
+            <p class="eyebrow">Viltkamera</p>
+            <h1>Kameraoppsett</h1>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div class="save-state" id="save-state" aria-live="polite">
+            <span class="state-dot"></span>
+            <span>Alt er lagret</span>
+          </div>
+          <button id="reset-button" class="secondary-button" type="button" disabled>Tilbakestill</button>
+          <button id="save-button" class="primary-button" type="button" disabled>Lagre endringer</button>
+          <button id="logout-button" class="icon-button" type="button" title="Logg ut" aria-label="Logg ut">↪</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="editor-panel" aria-labelledby="editor-heading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">5 kameraer</p>
+              <h2 id="editor-heading">Metadata for nye bilder</h2>
+            </div>
+            <div class="future-badge"><span aria-hidden="true">●</span> Bare nye opplastinger</div>
+          </div>
+          <p class="panel-intro">Velg et kamera, rediger tittel, emne, kommentar, tagger og plassering, eller flytt markøren på kartet. Den eksisterende bildehistorikken endres ikke.</p>
+          <div id="camera-list" class="camera-list"></div>
+        </section>
+
+        <aside class="map-panel" aria-labelledby="map-heading">
+          <div class="map-toolbar">
+            <div>
+              <p class="eyebrow">Kartplassering</p>
+              <h2 id="map-heading">Flytt valgt kamera</h2>
+            </div>
+            <button id="fit-map-button" class="secondary-button compact" type="button">Vis alle</button>
+          </div>
+          <p class="map-hint">Dra markøren eller klikk i kartet. Koordinatene oppdateres automatisk.</p>
+          <div id="map" aria-label="Kart med kamerplasseringer"></div>
+          <div class="selected-camera-bar">
+            <span class="selected-number" id="selected-number">1</span>
+            <div>
+              <span class="selected-label">Valgt kamera</span>
+              <strong id="selected-title">Kamera 1</strong>
+            </div>
+            <div class="selected-coordinates" id="selected-coordinates"></div>
+          </div>
+          <div class="map-credit">Kartdata © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a></div>
+        </aside>
+      </main>
+
+      <footer class="footer-bar">
+        <span id="revision-label">Laster konfigurasjon …</span>
+        <span id="username-label"></span>
+      </footer>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script src="/static/vendor/leaflet/leaflet.js?v=1.9.4"></script>
+    <script src="/static/app.js?v=1.2.0" defer></script>
+  </body>
+</html>

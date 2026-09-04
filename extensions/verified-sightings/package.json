@@ -1,0 +1,20 @@
+{
+  "name": "pigallery2-verified-sightings",
+  "version": "1.0.0",
+  "description": "Persistent verified wildlife sightings album for PiGallery2",
+  "license": "MIT",
+  "main": "server.js",
+  "dependencies": {
+    "pigallery2-extension-kit": "3.5.2"
+  },
+  "devDependencies": {
+    "@types/express": "4.17.23",
+    "@types/node": "22.16.5",
+    "typescript": "5.8.3",
+    "typeorm": "0.3.25"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node test.js"
+  }
+}

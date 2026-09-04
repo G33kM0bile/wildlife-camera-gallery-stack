@@ -1,0 +1,146 @@
+# Installation and recreation guide
+
+This guide mirrors the captured two-container layout. Commands assume root on
+Debian 13. Adjust addresses and mount technology for your environment.
+
+## 1. Prepare storage
+
+Create the writable photo tree on the SFTPGo host:
+
+```bash
+install -d -o sftpgo -g sftpgo -m 0750 /srv/sftpgo/data
+for n in 01 02 03 04 05; do
+  install -d -o sftpgo -g sftpgo -m 0750 "/srv/sftpgo/data/hc960-$n"
+done
+```
+
+Expose that tree to the PiGallery host using a storage mount appropriate for
+the lab (bind mount, NFS, CephFS, Proxmox mount point, etc.). Mount it read-only
+at `/photos` on the PiGallery host. Verify with:
+
+```bash
+findmnt /photos
+touch /photos/.write-test   # this must fail on the PiGallery host
+```
+
+## 2. Install and configure SFTPGo
+
+Use the official SFTPGo package or `compose/sftpgo/compose.yaml`. The captured
+deployment ran SFTPGo 2.7.5 as a native systemd service and kept its photo root
+at `/srv/sftpgo/data`.
+
+In WebAdmin:
+
+1. Replace the initial administrator credentials.
+2. Create one user per camera.
+3. Give each user a home/folder that resolves only to its own `hc960-NN`
+   directory.
+4. Disable protocols and permissions the cameras do not use.
+5. Test upload, rename and reconnect from every camera.
+6. Keep WebAdmin bound to a trusted interface or reverse-proxy it with strong
+   access controls.
+
+Do not export SFTPGo users into Git: exports can include password hashes,
+public keys and private filesystem information.
+
+## 3. Install metadata automation and camera admin
+
+Copy this repository to the SFTPGo host, edit
+`camera-admin/config/cameras.example.json` with private real data, and save it
+as `camera-admin/config/cameras.json` (ignored by Git).
+
+Then run:
+
+```bash
+sudo ./scripts/install-metadata-stack.sh
+```
+
+The installer adds `python3`, `libimage-exiftool-perl` and `inotify-tools`,
+installs the two services, and preserves an existing production
+`cameras.json`. Inspect status:
+
+```bash
+systemctl status viltkamera-metadata viltkamera-camera-admin
+journalctl -u viltkamera-metadata -f
+```
+
+The admin UI defaults to `127.0.0.1:9095`. Change its systemd environment only
+if a trusted LAN or reverse proxy must reach it, then run `systemctl
+daemon-reload` and restart the service.
+
+## 4. Deploy PiGallery2
+
+```bash
+install -d -m 0750 /opt/pigallery2/{config,db,tmp}
+cd /path/to/repository/compose/pigallery2
+cp ../../.env.example .env
+# Edit PIGALLERY_BIND, PIGALLERY_PORT, PHOTO_ROOT and PIGALLERY_ROOT.
+docker compose --env-file .env up -d
+docker compose ps
+```
+
+Open PiGallery2, immediately replace the initial admin password, enable the
+database/indexing settings appropriate for the library, and run the first
+index. PiGallery2 should see `/app/data/images` inside the container; do not
+change that internal path in the UI.
+
+## 5. Install verified sightings
+
+```bash
+install -d -m 0750 \
+  /opt/pigallery2/config/extensions/verified-sightings
+cp extensions/verified-sightings/package.json \
+   extensions/verified-sightings/server.js \
+   /opt/pigallery2/config/extensions/verified-sightings/
+cd /opt/pigallery2
+docker compose restart
+```
+
+Enable the extension in PiGallery2 Settings if it is not discovered
+automatically. After marking one photo, confirm the writable registry exists:
+
+```text
+/opt/pigallery2/config/extensions/verified-sightings/verified-sightings.json
+```
+
+## 6. Build the GPX waypoint image (optional)
+
+The overlay is version-specific and currently targets 3.5.2:
+
+```bash
+cd pigallery2-map
+./build.sh
+```
+
+Set `PIGALLERY_IMAGE=viltkamera/pigallery2:3.5.2-map-waypoints` in the PiGallery
+`.env`, then recreate the container. See [maps-and-gpx.md](maps-and-gpx.md).
+
+## 7. Add a private GPX map
+
+Copy `gpx/example.gpx` outside the repository, replace every fake coordinate,
+and place the production file at the top of the photo tree. Include `name`,
+`desc`, `sym` and `type` for useful popups and deterministic colors.
+
+## 8. Reverse proxy and DNS
+
+Terminate TLS at the preferred reverse proxy and proxy only PiGallery's HTTP
+port. Preserve normal forwarding headers and WebSocket support. Do not bypass
+PiGallery authentication just because the URL is public.
+
+## 9. Grafana (optional)
+
+Import `grafana/viltkamera-grafana-dashboard-no.json`, choose the InfluxDB 2.x
+Flux datasource when prompted, and verify the default 48-hour range. The
+dashboard contains no datasource UID or credentials.
+
+## 10. Acceptance test
+
+Run `scripts/validate-deployment.sh` locally on each relevant host, then test:
+
+1. a camera can upload a new JPEG;
+2. ExifTool shows expected title, subject, comment, tags and GPS;
+3. PiGallery discovers the new image;
+4. a normal logged-in user can mark/unmark a verified sighting;
+5. the map shows named/color-coded GPX pins and tracks;
+6. the photo tree remains read-only from the PiGallery host;
+7. backups can be restored into a disposable instance.

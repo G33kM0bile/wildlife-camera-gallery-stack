@@ -1,0 +1,20 @@
+services:
+  pigallery2:
+    image: ${PIGALLERY_IMAGE:-bpatrik/pigallery2:latest}
+    container_name: pigallery2
+    environment:
+      NODE_ENV: production
+    volumes:
+      - ${PIGALLERY_ROOT:-/opt/pigallery2}/config:/app/data/config
+      - ${PIGALLERY_ROOT:-/opt/pigallery2}/db:/app/data/db
+      - ${PHOTO_ROOT:-/photos}:/app/data/images:ro
+      - ${PIGALLERY_ROOT:-/opt/pigallery2}/tmp:/app/data/tmp
+    ports:
+      - ${PIGALLERY_BIND:-127.0.0.1}:${PIGALLERY_PORT:-8081}:80
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:80').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

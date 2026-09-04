@@ -1,0 +1,22 @@
+.env
+*.bak
+*.log
+*.sqlite
+*.sqlite3
+*.tar.gz
+*.zip
+__pycache__/
+node_modules/
+build/
+dist/
+
+# Runtime data and private deployment material
+cameras.json
+verified-sightings.json
+photos/
+private/
+secrets/
+*.key
+*.pem
+*.gpx
+!gpx/example.gpx
