@@ -142,6 +142,7 @@ export class GalleryMapLightboxComponent implements OnChanges, OnDestroy {
   private leafletMap: Map;
   private longPathSEPairs: { [key: string]: number } = {}; // stores how often a long distance path pair comes up
   private waypointIconCache: { [color: string]: DivIcon } = {};
+  private readonly cameraWaypointPane = 'camera-waypoints';
 
   constructor(
     public fullScreenService: FullScreenService,
@@ -455,6 +456,11 @@ export class GalleryMapLightboxComponent implements OnChanges, OnDestroy {
 
   onMapReady(map: Map): void {
     this.leafletMap = map;
+    const cameraPane = this.leafletMap.getPane(this.cameraWaypointPane) ??
+      this.leafletMap.createPane(this.cameraWaypointPane);
+    // Keep cameras above ordinary waypoint and clustered photo markers, while
+    // leaving popups/tooltips above the cameras.
+    cameraPane.style.zIndex = '675';
     this.leafletMap.setMaxZoom(undefined);
     this.leafletMap.zoomControl.setPosition('bottomright');
     this.mapLayerControl.addTo(this.leafletMap);
@@ -664,6 +670,7 @@ export class GalleryMapLightboxComponent implements OnChanges, OnDestroy {
 
   private async loadGPXFiles(): Promise<void> {
     this.clearPath();
+    const seenCameraWaypoints = new Set<string>();
     if (this.gpxFiles.length === 0) {
       this.pathLayersConfigOrdered.forEach(p => {
         // remove from controls
@@ -756,7 +763,19 @@ export class GalleryMapLightboxComponent implements OnChanges, OnDestroy {
       }
 
       parsedGPX.markers.forEach((mc) => {
-        const mkr = marker(mc);
+        const isCamera = this.isCameraWaypoint(mc);
+        if (isCamera) {
+          const cameraKey = this.getCameraWaypointKey(mc);
+          if (seenCameraWaypoints.has(cameraKey)) {
+            return;
+          }
+          seenCameraWaypoints.add(cameraKey);
+        }
+        const mkr = marker(mc, isCamera ? {
+          pane: this.cameraWaypointPane,
+          riseOnHover: true,
+          zIndexOffset: 10000
+        } : undefined);
         mkr.setIcon(this.getWaypointIcon(mc));
         pathLayer.layer.addLayer(mkr);
         mkr.bindPopup(this.getWaypointPopup(mc));
@@ -791,9 +810,9 @@ export class GalleryMapLightboxComponent implements OnChanges, OnDestroy {
   }
 
   private getWaypointColor(waypoint: GpxWaypoint): string {
-    const value = `${waypoint.type || ''} ${waypoint.symbol || ''} ${waypoint.name || ''}`.toLocaleLowerCase();
-    if (/viltkamera|camera|hc960-/.test(value)) {
-      return '#f59e0b';
+    const value = this.getWaypointSearchValue(waypoint);
+    if (this.isCameraWaypoint(waypoint)) {
+      return '#00c2ff';
     }
     if (/jaktt[aå]rn|jakt\s*t[aå]rn/.test(value)) {
       return '#dc2626';
@@ -811,6 +830,23 @@ export class GalleryMapLightboxComponent implements OnChanges, OnDestroy {
       return '#2563eb';
     }
     return '#9333ea';
+  }
+
+  private isCameraWaypoint(waypoint: GpxWaypoint): boolean {
+    return /viltkamera|camera|hc960-|kamera\s*[1-5]\b/.test(
+      this.getWaypointSearchValue(waypoint)
+    );
+  }
+
+  private getCameraWaypointKey(waypoint: GpxWaypoint): string {
+    const value = this.getWaypointSearchValue(waypoint);
+    const id = value.match(/hc960-\d+|kamera\s*\d+/)?.[0]?.replace(/\s+/g, '');
+    return id || `${waypoint.lat.toFixed(6)},${waypoint.lng.toFixed(6)}`;
+  }
+
+  private getWaypointSearchValue(waypoint: GpxWaypoint): string {
+    return `${waypoint.type || ''} ${waypoint.symbol || ''} ${waypoint.name || ''} ${waypoint.description || ''}`
+      .toLocaleLowerCase();
   }
 
   private getWaypointPopup(waypoint: GpxWaypoint): string {

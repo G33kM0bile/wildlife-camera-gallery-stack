@@ -24,7 +24,7 @@ The mapper normalizes Norwegian and English-like category text from `name`,
 
 | Category | Color |
 |---|---|
-| camera / `hc960` / `viltkamera` | orange |
+| camera / `hc960` / `viltkamera` | bright cyan |
 | hunting tower / `jakttårn` | red |
 | animal track / `trakk` | yellow |
 | access / parking / junction | green |
@@ -34,6 +34,11 @@ The mapper normalizes Norwegian and English-like category text from `name`,
 
 Use stable `<type>` values where possible; relying on the displayed name alone
 is less predictable.
+
+Camera waypoints are de-duplicated by camera identifier (falling back to exact
+coordinates), rendered in a dedicated high-priority Leaflet pane, and given a
+large z-index offset. This keeps the single camera pin above ordinary POIs and
+photo-marker clusters at the same position.
 
 ## Tracks and boundaries
 
