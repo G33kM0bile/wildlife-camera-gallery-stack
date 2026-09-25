@@ -5,5 +5,6 @@ from(bucket: "Wildlife")
     r.jaktfelt_id == "1840J0096" and
     r._field == "felling"
   )
+  |> group(columns: ["jaktfelt_id"])
   |> aggregateWindow(every: 1y, fn: sum, createEmpty: false, timeSrc: "_start")
   |> yield(name: "felte_per_aar")

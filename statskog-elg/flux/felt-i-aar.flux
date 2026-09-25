@@ -7,5 +7,6 @@ from(bucket: "Wildlife")
     r.jaktfelt_id == "1840J0096" and
     r._field == "felling"
   )
+  |> group()
   |> sum()
   |> yield(name: "felt_i_aar")

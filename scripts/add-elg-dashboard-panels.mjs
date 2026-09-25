@@ -102,11 +102,13 @@ const qCurrentCount = `import "date"
 from(bucket: "Wildlife")
   |> range(start: date.truncate(t: now(), unit: 1y), stop: now())
   |> filter(fn: (r) => r._measurement == "elg_felling" and r.jaktfelt_id == "1840J0096" and r._field == "felling")
+  |> group()
   |> sum()`;
 
 const qAverageWeight = `from(bucket: "Wildlife")
   |> range(start: 2019-01-01T00:00:00Z, stop: now())
   |> filter(fn: (r) => r._measurement == "elg_felling" and r.jaktfelt_id == "1840J0096" and r._field == "slaktevekt")
+  |> group()
   |> mean()`;
 
 const qLatestWeight = `from(bucket: "Wildlife")
@@ -119,6 +121,7 @@ const qLatestWeight = `from(bucket: "Wildlife")
 const qHistoricalCount = `from(bucket: "Wildlife")
   |> range(start: 2019-01-01T00:00:00Z, stop: now())
   |> filter(fn: (r) => r._measurement == "elg_felling" and r.jaktfelt_id == "1840J0096" and r._field == "felling")
+  |> group()
   |> sum()`;
 
 const qCumulative = `import "date"
@@ -145,6 +148,7 @@ const qDistribution = `from(bucket: "Wildlife")
 const qYearly = `from(bucket: "Wildlife")
   |> range(start: 2019-01-01T00:00:00Z, stop: now())
   |> filter(fn: (r) => r._measurement == "elg_felling" and r.jaktfelt_id == "1840J0096" and r._field == "felling")
+  |> group(columns: ["jaktfelt_id"])
   |> aggregateWindow(every: 1y, fn: sum, createEmpty: false, timeSrc: "_start")
   |> yield(name: "Felte elg")`;
 

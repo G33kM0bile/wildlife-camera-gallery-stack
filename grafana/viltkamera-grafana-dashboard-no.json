@@ -2294,7 +2294,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "import \"date\"\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> sum()",
+          "query": "import \"date\"\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group()\n  |> sum()",
           "refId": "A"
         }
       ],
@@ -2360,7 +2360,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"slaktevekt\")\n  |> mean()",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"slaktevekt\")\n  |> group()\n  |> mean()",
           "refId": "A"
         }
       ],
@@ -2492,7 +2492,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> sum()",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group()\n  |> sum()",
           "refId": "A"
         }
       ],
@@ -2741,7 +2741,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> aggregateWindow(every: 1y, fn: sum, createEmpty: false, timeSrc: \"_start\")\n  |> yield(name: \"Felte elg\")",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group(columns: [\"jaktfelt_id\"])\n  |> aggregateWindow(every: 1y, fn: sum, createEmpty: false, timeSrc: \"_start\")\n  |> yield(name: \"Felte elg\")",
           "refId": "A"
         }
       ],

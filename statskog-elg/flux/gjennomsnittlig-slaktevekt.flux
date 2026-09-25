@@ -5,5 +5,6 @@ from(bucket: "Wildlife")
     r.jaktfelt_id == "1840J0096" and
     r._field == "slaktevekt"
   )
+  |> group()
   |> mean()
   |> yield(name: "gjennomsnittlig_slaktevekt")
