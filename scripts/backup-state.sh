@@ -20,6 +20,10 @@ for candidate in \
   /etc/sftpgo \
   /var/lib/sftpgo \
   /etc/viltkamera-metadata \
+  /etc/statskog-elg \
+  /var/lib/statskog-elg \
+  /etc/systemd/system/statskog-elg.service \
+  /etc/systemd/system/statskog-elg.timer \
   /etc/systemd/system/viltkamera-metadata.service \
   /etc/systemd/system/viltkamera-camera-admin.service \
   /opt/viltkamera-camera-admin \

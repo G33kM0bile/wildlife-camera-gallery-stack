@@ -1,4 +1,5 @@
 .env
+statskog-elg.env
 *.bak
 *.log
 *.sqlite

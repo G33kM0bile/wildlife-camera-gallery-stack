@@ -146,7 +146,25 @@ Import `grafana/viltkamera-grafana-dashboard-no.json`, choose the InfluxDB 2.x
 Flux datasource when prompted, and verify the default 48-hour range. The
 dashboard contains no datasource UID or credentials.
 
-## 11. Acceptance test
+## 11. Statskog elg collector (optional)
+
+Install this on a host that can reach both Statskog over HTTPS and InfluxDB:
+
+```bash
+cd /path/to/repository/statskog-elg
+sudo ./install.sh
+sudoedit /etc/statskog-elg/statskog-elg.env
+sudo -u statskog-elg /opt/statskog-elg/collector.py --check-api
+sudo systemctl start statskog-elg.service
+sudo journalctl -u statskog-elg.service -n 50 --no-pager
+sudo systemctl enable --now statskog-elg.timer
+```
+
+Use a dedicated token with write access only to `Wildlife`. The first run
+imports the available history; later runs send only new or changed records.
+See `statskog-elg/README.md` for schema and recovery behaviour.
+
+## 12. Acceptance test
 
 Run `scripts/validate-deployment.sh` locally on each relevant host, then test:
 
@@ -159,3 +177,5 @@ Run `scripts/validate-deployment.sh` locally on each relevant host, then test:
 7. backups can be restored into a disposable instance.
 8. `https://8370.no/viltkamera.html?id=hc960-01` retains its public URL and
    displays the selected camera ID.
+9. `statskog-elg.timer` is active and a second manual collector run reports no
+   new or changed felling records.

@@ -24,6 +24,8 @@ restricted.
   symbol and type, shows human-readable popups, and colors marker categories.
 - An importable Norwegian Grafana dashboard using an InfluxDB/Flux datasource
   selected during import.
+- A Statskog ArcGIS collector that imports deduplicated moose harvest records
+  for `Storjord Øst` into the existing InfluxDB bucket every ten minutes.
 - The Caddy-hosted Norwegian camera-information page used by the physical QR
   codes.
 - Sanitized configuration and GPX examples, backup guidance and recovery
@@ -44,6 +46,8 @@ flowchart LR
   X[Verified sightings extension] --> V[verified-sightings.json]
   F[GPX waypoints and boundaries] --> G
   I[Image/OCR pipeline] --> D[(InfluxDB)]
+  E[Statskog ArcGIS] --> K[Elg collector]
+  K --> D
   D --> R[Grafana]
 ```
 
@@ -82,9 +86,11 @@ and retest them before upgrading PiGallery2.
    `gpx/example.gpx` as the schema, never as real coordinates.
 7. Import `grafana/viltkamera-grafana-dashboard-no.json` and bind its datasource
    input to the desired InfluxDB 2.x Flux datasource.
-8. Configure a reverse proxy/TLS for PiGallery2. Keep SFTPGo WebAdmin and the
+8. Install `statskog-elg/` on a host that can reach InfluxDB, add a scoped
+   write token and enable its ten-minute systemd timer.
+9. Configure a reverse proxy/TLS for PiGallery2. Keep SFTPGo WebAdmin and the
    camera admin UI private.
-9. Deploy `information-site/viltkamera.html` to `/var/www/html/` on the Caddy
+10. Deploy `information-site/viltkamera.html` to `/var/www/html/` on the Caddy
    host. Preserve `https://8370.no/viltkamera.html` because physical camera QR
    codes point to it.
 
@@ -101,6 +107,8 @@ Back up these independently:
 - the entire photo tree (or storage snapshots)
 - SFTPGo provider/config state and administrator/user records
 - `/etc/viltkamera-metadata/cameras.json`
+- `/etc/statskog-elg/statskog-elg.env` and
+  `/var/lib/statskog-elg/state.json`
 - PiGallery2 `config/` and `db/`
 - `config/extensions/verified-sightings/verified-sightings.json`
 - private production GPX files
@@ -133,6 +141,7 @@ grafana/                       Norwegian dashboard JSON
 information-site/              Caddy-hosted QR-code information page
 metadata/                      watcher and systemd service
 pigallery2-map/                PiGallery2 3.5.2 overlay and build script
+statskog-elg/                  ArcGIS-to-Influx collector, timer and Flux
 scripts/                       install, backup and validation helpers
 ```
 

@@ -20,6 +20,8 @@ command -v systemctl >/dev/null 2>&1 && {
     check "metadata watcher" systemctl is-active --quiet viltkamera-metadata
   systemctl list-unit-files viltkamera-camera-admin.service >/dev/null 2>&1 && \
     check "camera admin" systemctl is-active --quiet viltkamera-camera-admin
+  systemctl list-unit-files statskog-elg.timer >/dev/null 2>&1 && \
+    check "Statskog elg timer" systemctl is-active --quiet statskog-elg.timer
 }
 
 [[ -d /srv/sftpgo/data ]] && check "SFTPGo photo root" test -d /srv/sftpgo/data

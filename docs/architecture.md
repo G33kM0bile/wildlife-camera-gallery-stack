@@ -60,6 +60,18 @@ This is optional and independent of the gallery. The included dashboard expects:
 
 Datasource credentials stay in Grafana and are not embedded in the dashboard.
 
+### Statskog harvest collector
+
+The optional `statskog-elg` oneshot service polls Statskog's public ArcGIS
+layer for `Art='Elg'` and `JaktfeltID='1840J0096'`. A systemd timer runs it
+every ten minutes. It deduplicates source revisions by `StorviltID`, records
+source `Dato` as the Influx timestamp and writes measurement `elg_felling` to
+the existing `Wildlife` bucket.
+
+The collector keeps fingerprints in `/var/lib/statskog-elg/state.json`, so
+unchanged events are not transmitted repeatedly. It never requests geometry
+and does not represent ArcGIS points as exact kill locations.
+
 ## Trust boundaries
 
 - Internet -> reverse proxy -> PiGallery2: authenticated gallery access.
@@ -67,5 +79,7 @@ Datasource credentials stay in Grafana and are not embedded in the dashboard.
 - Trusted admin network -> SFTPGo WebAdmin and camera admin UI.
 - PiGallery2 -> photo storage: read-only.
 - Metadata service -> photo storage: narrowly scoped write access.
+- Elg collector -> Statskog: public read-only HTTPS queries.
+- Elg collector -> InfluxDB: token restricted to bucket write access.
 
 Do not expose SFTPGo WebAdmin or camera-admin directly to the public internet.

@@ -5,6 +5,8 @@
 ```bash
 systemctl is-active sftpgo viltkamera-metadata viltkamera-camera-admin
 journalctl -u viltkamera-metadata --since today
+systemctl is-active statskog-elg.timer
+journalctl -u statskog-elg.service --since today
 cd /opt/pigallery2 && docker compose ps
 cd /opt/pigallery2 && docker compose logs --tail=100
 findmnt /photos
@@ -38,9 +40,14 @@ photo tree. Test both backups together.
 5. Restore the verified-sightings registry (normally already inside config).
 6. Restore the Caddy configuration, `viltkamera.html`, and the protected
    `grunneiertillatelse.jpg` without changing the QR-code URL.
-7. Recreate mounts, starting SFTPGo before the metadata watcher and PiGallery.
-8. Confirm PiGallery's photo mount is read-only.
-9. Validate logins, one upload, metadata, the map and a verified sighting.
+7. Restore `/etc/statskog-elg`, reinstall its service/timer and optionally
+   restore `/var/lib/statskog-elg/state.json`. Losing the state file is safe;
+   the next run rewrites the same Influx point identities.
+8. Recreate mounts, starting SFTPGo before the metadata watcher and PiGallery.
+9. Confirm PiGallery's photo mount is read-only.
+10. Validate logins, one upload, metadata, the map and a verified sighting.
+11. Run the elg collector twice and confirm the second run reports no new or
+    changed records.
 
 Never restore only PiGallery's SQLite database while pairing it with a
 different config or photo-tree layout without first testing in a disposable

@@ -2221,6 +2221,729 @@
       "title": "Bildeaktivitet over tid",
       "type": "timeseries",
       "description": "Antall bildehendelser i hvert automatisk tilpassede intervall, stablet per kamera."
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "id": 35,
+      "panels": [],
+      "title": "Elgjakt – Storjord Øst",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Unike registrerte elgfellinger i inneværende kalenderår.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-blue",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 49
+      },
+      "id": 36,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "import \"date\"\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> sum()",
+          "refId": "A"
+        }
+      ],
+      "title": "Felt hittil i år",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Gjennomsnitt for alle gyldige positive slaktevekter i historikken.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "Ingen vektdata",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-blue",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "kg"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 49
+      },
+      "id": 37,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"slaktevekt\")\n  |> mean()",
+          "refId": "A"
+        }
+      ],
+      "title": "Gjennomsnittlig slaktevekt",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Slaktevekten til den nyeste fellingen som har en gyldig vekt.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "Ingen vektdata",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-blue",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "kg"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 49
+      },
+      "id": 38,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"slaktevekt\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)",
+          "refId": "A"
+        }
+      ],
+      "title": "Siste registrerte slaktevekt",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Totalt antall unike importerte fellinger fra 2019 og fremover.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-blue",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 49
+      },
+      "id": 39,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> sum()",
+          "refId": "A"
+        }
+      ],
+      "title": "Fellinger i historikken",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Kumulativt antall fellinger i inneværende kalenderår.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 18,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 53
+      },
+      "id": 40,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "import \"date\"\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group(columns: [\"jaktfelt_id\"])\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"_value\"])\n  |> yield(name: \"Felt\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Fellinger gjennom årets jakt",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Historisk fordeling etter Statskogs detaljerte Kategoriskutt-felt.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 53
+      },
+      "id": 41,
+      "options": {
+        "displayLabels": [
+          "name",
+          "percent",
+          "value"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"felling\", \"kategori_skutt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"kategori_skutt\"])\n  |> sum(column: \"felling\")\n  |> rename(columns: {felling: \"_value\"})\n  |> keep(columns: [\"kategori_skutt\", \"_value\"])\n  |> group()\n  |> yield(name: \"Fordeling\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Fordeling",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Historisk antall fellinger gruppert per kalenderår.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 45,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 61
+      },
+      "id": 42,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> aggregateWindow(every: 1y, fn: sum, createEmpty: false, timeSrc: \"_start\")\n  |> yield(name: \"Felte elg\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Felte elg per år",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "Gjennomsnittlig gyldig slaktevekt per detaljert kategori.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "kg",
+            "axisPlacement": "auto",
+            "fillOpacity": 65,
+            "lineWidth": 1
+          },
+          "mappings": [],
+          "unit": "kg"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 61
+      },
+      "id": 43,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.75,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"kategori_skutt\"])\n  |> mean(column: \"slaktevekt\")\n  |> rename(columns: {slaktevekt: \"_value\"})\n  |> keep(columns: [\"kategori_skutt\", \"_value\"])\n  |> group()\n  |> yield(name: \"Snittvekt\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Gjennomsnittlig slaktevekt per kategori",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_WILDLIFE}"
+      },
+      "description": "De 20 nyeste registrerte elgfellingene. Tom vekt betyr at Statskog ikke har en gyldig positiv slaktevekt.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Dato"
+              },
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "storvilt_id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Statskog-ID"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kategori"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Kategori"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kategori_skutt"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Detaljert kategori"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "slaktevekt"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Slaktevekt"
+              },
+              {
+                "id": "unit",
+                "value": "kg"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 69
+      },
+      "id": 44,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Dato"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_WILDLIFE}"
+          },
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"felling\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)\n  |> keep(columns: [\"_time\", \"storvilt_id\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"])\n  |> yield(name: \"Siste felte dyr\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Siste felte dyr",
+      "type": "table"
     }
   ],
   "refresh": "1m",
@@ -2254,6 +2977,6 @@
   "timezone": "browser",
   "title": "Viltkameraoversikt",
   "uid": "viltkameraoversikt",
-  "version": 2,
+  "version": 3,
   "weekStart": "monday"
 }
