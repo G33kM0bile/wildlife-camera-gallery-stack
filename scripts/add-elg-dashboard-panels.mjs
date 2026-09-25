@@ -13,7 +13,7 @@ const datasource = { type: 'influxdb', uid: '${DS_WILDLIFE}' };
 
 const target = (query) => [{ datasource, query, refId: 'A' }];
 
-const stat = ({ id, title, description, x, query, unit = 'short', noValue = '0' }) => ({
+const stat = ({ id, title, description, x, y, query, unit = 'short', noValue = '0' }) => ({
   datasource,
   description,
   fieldConfig: {
@@ -32,7 +32,7 @@ const stat = ({ id, title, description, x, query, unit = 'short', noValue = '0' 
     },
     overrides: [],
   },
-  gridPos: { h: 4, w: 6, x, y: 49 },
+  gridPos: { h: 4, w: 6, x, y },
   id,
   options: {
     colorMode: 'background',
@@ -76,7 +76,7 @@ const timeseriesDefaults = (unit = 'short', drawStyle = 'line') => ({
   unit,
 });
 
-const timeseries = ({ id, title, description, x, y, w, query, unit, drawStyle }) => ({
+const timeseries = ({ id, title, description, x, y, w, query, unit, drawStyle, timeFrom }) => ({
   datasource,
   description,
   fieldConfig: { defaults: timeseriesDefaults(unit, drawStyle), overrides: [] },
@@ -93,6 +93,7 @@ const timeseries = ({ id, title, description, x, y, w, query, unit, drawStyle })
   },
   pluginVersion: '11.0.0',
   targets: target(query),
+  ...(timeFrom ? { timeFrom } : {}),
   title,
   type: 'timeseries',
 });
@@ -175,7 +176,7 @@ const qRecent = `from(bucket: "Wildlife")
 const elgPanels = [
   {
     collapsed: false,
-    gridPos: { h: 1, w: 24, x: 0, y: 48 },
+    gridPos: { h: 1, w: 24, x: 0, y: 40 },
     id: 35,
     panels: [],
     title: 'Elgjakt – Storjord Øst',
@@ -186,6 +187,7 @@ const elgPanels = [
     title: 'Felt hittil i år',
     description: 'Unike registrerte elgfellinger i inneværende kalenderår.',
     x: 0,
+    y: 41,
     query: qCurrentCount,
   }),
   stat({
@@ -193,6 +195,7 @@ const elgPanels = [
     title: 'Gjennomsnittlig slaktevekt',
     description: 'Gjennomsnitt for alle gyldige positive slaktevekter i historikken.',
     x: 6,
+    y: 41,
     query: qAverageWeight,
     unit: 'kg',
     noValue: 'Ingen vektdata',
@@ -202,6 +205,7 @@ const elgPanels = [
     title: 'Siste registrerte slaktevekt',
     description: 'Slaktevekten til den nyeste fellingen som har en gyldig vekt.',
     x: 12,
+    y: 41,
     query: qLatestWeight,
     unit: 'kg',
     noValue: 'Ingen vektdata',
@@ -211,6 +215,7 @@ const elgPanels = [
     title: 'Fellinger i historikken',
     description: 'Totalt antall unike importerte fellinger fra 2019 og fremover.',
     x: 18,
+    y: 41,
     query: qHistoricalCount,
   }),
   timeseries({
@@ -218,7 +223,7 @@ const elgPanels = [
     title: 'Fellinger gjennom årets jakt',
     description: 'Kumulativt antall fellinger i inneværende kalenderår.',
     x: 0,
-    y: 53,
+    y: 45,
     w: 12,
     query: qCumulative,
     unit: 'short',
@@ -235,7 +240,7 @@ const elgPanels = [
       },
       overrides: [],
     },
-    gridPos: { h: 8, w: 12, x: 12, y: 53 },
+    gridPos: { h: 8, w: 12, x: 12, y: 45 },
     id: 41,
     options: {
       displayLabels: ['name', 'percent', 'value'],
@@ -254,11 +259,12 @@ const elgPanels = [
     title: 'Felte elg per år',
     description: 'Historisk antall fellinger gruppert per kalenderår.',
     x: 0,
-    y: 61,
+    y: 53,
     w: 12,
     query: qYearly,
     unit: 'short',
     drawStyle: 'bars',
+    timeFrom: '10y',
   }),
   {
     datasource,
@@ -272,7 +278,7 @@ const elgPanels = [
       },
       overrides: [],
     },
-    gridPos: { h: 8, w: 12, x: 12, y: 61 },
+    gridPos: { h: 8, w: 12, x: 12, y: 53 },
     id: 43,
     options: {
       barRadius: 0,
@@ -305,7 +311,7 @@ const elgPanels = [
         { matcher: { id: 'byName', options: 'slaktevekt' }, properties: [{ id: 'displayName', value: 'Slaktevekt' }, { id: 'unit', value: 'kg' }] },
       ],
     },
-    gridPos: { h: 8, w: 24, x: 0, y: 69 },
+    gridPos: { h: 8, w: 24, x: 0, y: 61 },
     id: 44,
     options: {
       cellHeight: 'sm',
@@ -321,7 +327,28 @@ const elgPanels = [
 ];
 
 const managedIds = new Set(elgPanels.map((panel) => panel.id));
-dashboard.panels = dashboard.panels.filter((panel) => !managedIds.has(panel.id));
+dashboard.panels = dashboard.panels.filter(
+  (panel) => panel.id !== 33 && !managedIds.has(panel.id),
+);
+
+const imageActivity = dashboard.panels.find((panel) => panel.id === 34);
+if (imageActivity) imageActivity.gridPos.y = 32;
+
+const temperaturePanelIds = new Set([2, 7, 12, 17, 22, 32]);
+for (const panel of dashboard.panels) {
+  if (!temperaturePanelIds.has(panel.id)) continue;
+
+  for (const queryTarget of panel.targets || []) {
+    if (!queryTarget.query?.includes('r._field == "temperature_c"')) continue;
+    if (queryTarget.query.includes('r._value >= -40.0')) continue;
+
+    queryTarget.query = queryTarget.query.replace(
+      /(\|> filter\(fn: \(r\) =>[^\n]*r\._field == "temperature_c"[^\n]*\)\n)/,
+      '$1  |> filter(fn: (r) => r._value >= -40.0 and r._value <= 40.0)\n',
+    );
+  }
+}
+
 dashboard.panels.push(...elgPanels);
 dashboard.version = Math.max(Number(dashboard.version || 0), 3);
 dashboard.time = { from: 'now-48h', to: 'now' };

@@ -26,6 +26,8 @@ restricted.
   selected during import.
 - A Statskog ArcGIS collector that imports deduplicated moose harvest records
   for `Storjord Øst` into the existing InfluxDB bucket every ten minutes.
+- A hardened Suntek temperature parser that tolerates missing/misread degree
+  symbols and validates Celsius against the printed Fahrenheit value.
 - The Caddy-hosted Norwegian camera-information page used by the physical QR
   codes.
 - Sanitized configuration and GPX examples, backup guidance and recovery
@@ -142,6 +144,7 @@ information-site/              Caddy-hosted QR-code information page
 metadata/                      watcher and systemd service
 pigallery2-map/                PiGallery2 3.5.2 overlay and build script
 statskog-elg/                  ArcGIS-to-Influx collector, timer and Flux
+wildlife-ocr/                  tested Suntek temperature parsing
 scripts/                       install, backup and validation helpers
 ```
 

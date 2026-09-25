@@ -141,7 +141,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-01\" and r._field == \"temperature_c\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-01\" and r._field == \"temperature_c\")\n  |> filter(fn: (r) => r._value >= -40.0 and r._value <= 40.0)\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
           "refId": "A"
         }
       ],
@@ -447,7 +447,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-02\" and r._field == \"temperature_c\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-02\" and r._field == \"temperature_c\")\n  |> filter(fn: (r) => r._value >= -40.0 and r._value <= 40.0)\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
           "refId": "A"
         }
       ],
@@ -753,7 +753,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-03\" and r._field == \"temperature_c\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-03\" and r._field == \"temperature_c\")\n  |> filter(fn: (r) => r._value >= -40.0 and r._value <= 40.0)\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
           "refId": "A"
         }
       ],
@@ -1059,7 +1059,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-04\" and r._field == \"temperature_c\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-04\" and r._field == \"temperature_c\")\n  |> filter(fn: (r) => r._value >= -40.0 and r._value <= 40.0)\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
           "refId": "A"
         }
       ],
@@ -1365,7 +1365,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-05\" and r._field == \"temperature_c\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r.camera == \"hc960-05\" and r._field == \"temperature_c\")\n  |> filter(fn: (r) => r._value >= -40.0 and r._value <= 40.0)\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
           "refId": "A"
         }
       ],
@@ -2025,108 +2025,13 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r._field == \"temperature_c\")\n  |> filter(fn: (r) => contains(value: r.camera, set: [\"hc960-01\", \"hc960-02\", \"hc960-03\", \"hc960-04\", \"hc960-05\"]))\n  |> keep(columns: [\"_time\", \"_value\", \"camera\"])\n  |> sort(columns: [\"_time\"])\n  |> yield(name: \"temperature_c\")",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r._field == \"temperature_c\")\n  |> filter(fn: (r) => r._value >= -40.0 and r._value <= 40.0)\n  |> filter(fn: (r) => contains(value: r.camera, set: [\"hc960-01\", \"hc960-02\", \"hc960-03\", \"hc960-04\", \"hc960-05\"]))\n  |> keep(columns: [\"_time\", \"_value\", \"camera\"])\n  |> sort(columns: [\"_time\"])\n  |> yield(name: \"temperature_c\")",
           "refId": "A"
         }
       ],
       "title": "Temperaturhistorikk",
       "type": "timeseries",
       "description": "Sist registrerte temperatur per intervall for de valgte kameraene."
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${DS_WILDLIFE}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 18,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "percent",
-          "displayName": "${__field.labels.camera}"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 32
-      },
-      "id": 33,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "min",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "11.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${DS_WILDLIFE}"
-          },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wildlife_camera\" and r._field == \"battery_pct\")\n  |> filter(fn: (r) => contains(value: r.camera, set: [\"hc960-01\", \"hc960-02\", \"hc960-03\", \"hc960-04\", \"hc960-05\"]))\n  |> keep(columns: [\"_time\", \"_value\", \"camera\"])\n  |> sort(columns: [\"_time\"])\n  |> yield(name: \"battery_pct\")",
-          "refId": "A"
-        }
-      ],
-      "title": "Batterihistorikk",
-      "type": "timeseries",
-      "description": "Sist registrerte batterinivå per intervall for de valgte kameraene."
     },
     {
       "datasource": {
@@ -2189,7 +2094,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 32
       },
       "id": 34,
       "options": {
@@ -2228,7 +2133,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 40
       },
       "id": 35,
       "panels": [],
@@ -2269,7 +2174,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 49
+        "y": 41
       },
       "id": 36,
       "options": {
@@ -2335,7 +2240,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 49
+        "y": 41
       },
       "id": 37,
       "options": {
@@ -2401,7 +2306,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 49
+        "y": 41
       },
       "id": 38,
       "options": {
@@ -2467,7 +2372,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 49
+        "y": 41
       },
       "id": 39,
       "options": {
@@ -2559,7 +2464,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 53
+        "y": 45
       },
       "id": 40,
       "options": {
@@ -2611,7 +2516,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 53
+        "y": 45
       },
       "id": 41,
       "options": {
@@ -2716,7 +2621,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 61
+        "y": 53
       },
       "id": 42,
       "options": {
@@ -2745,6 +2650,7 @@
           "refId": "A"
         }
       ],
+      "timeFrom": "10y",
       "title": "Felte elg per år",
       "type": "timeseries"
     },
@@ -2774,7 +2680,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 61
+        "y": 53
       },
       "id": 43,
       "options": {
@@ -2910,7 +2816,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 69
+        "y": 61
       },
       "id": 44,
       "options": {

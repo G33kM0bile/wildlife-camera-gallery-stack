@@ -59,6 +59,9 @@ This is optional and independent of the gallery. The included dashboard expects:
 - cameras `hc960-01` through `hc960-05`
 
 Datasource credentials stay in Grafana and are not embedded in the dashboard.
+The live OCR watcher validates the printed Celsius/Fahrenheit pair before it
+writes temperature fields. The dashboard also limits displayed temperature to
+-40–40 °C so old OCR spikes remain stored but do not distort the graphs.
 
 ### Statskog harvest collector
 
