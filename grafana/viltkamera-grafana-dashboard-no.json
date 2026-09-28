@@ -2493,6 +2493,7 @@
           "refId": "A"
         }
       ],
+      "timeFrom": "1y",
       "title": "Fellinger gjennom årets jakt",
       "type": "timeseries"
     },
@@ -2844,7 +2845,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"felling\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)\n  |> keep(columns: [\"_time\", \"storvilt_id\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"])\n  |> yield(name: \"Siste felte dyr\")",
+          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"felling\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)\n  |> keep(columns: [\"_time\", \"storvilt_id\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"])\n  |> yield(name: \"Siste felte dyr\")",
           "refId": "A"
         }
       ],
