@@ -1,6 +1,6 @@
 # Wildlife camera gallery stack
 
-Reproducible reference setup for receiving wildlife-camera images with
+Reproducible reference setup for receiving wildlife-camera media with
 SFTPGo, enriching new JPEG files with camera metadata, browsing them in
 PiGallery2, marking verified animal sightings, showing named GPX waypoints,
 and importing a Norwegian Grafana dashboard.
@@ -28,6 +28,9 @@ restricted.
   for `Storjord Øst` into the existing InfluxDB bucket every ten minutes.
 - A hardened Suntek temperature parser that tolerates missing/misread degree
   symbols and validates Celsius against the printed Fahrenheit value.
+- An MP4 validator that uses `ffprobe` after upload, quarantines corrupt video
+  outside the gallery tree, and performs a six-hour safety scan.
+- An additive MOTD status section for SFTPGo, OCR and video validation.
 - The Caddy-hosted Norwegian camera-information page used by the physical QR
   codes.
 - Sanitized configuration and GPX examples, backup guidance and recovery
@@ -39,6 +42,8 @@ restricted.
 flowchart LR
   C[Wildlife cameras] -->|SFTP| S[SFTPGo]
   S --> P[/srv/sftpgo/data/hc960-NN/]
+  P --> Q{MP4 validator}
+  Q -->|invalid| Z[/srv/sftpgo/quarantine/]
   P --> W[inotify metadata watcher]
   W -->|ExifTool| P
   P -->|read-only mount| G[PiGallery2]
@@ -79,20 +84,23 @@ and retest them before upgrading PiGallery2.
    each camera can upload only to its own directory.
 3. Install the metadata services and camera UI with
    `sudo scripts/install-metadata-stack.sh`.
-4. Deploy PiGallery2 using `compose/pigallery2/compose.yaml`, change the
+4. Install `wildlife-video-validator/` on the SFTPGo host and run its initial
+   full scan before exposing the media tree to PiGallery2.
+5. Optionally install the additive service summary with `sudo motd/install.sh`.
+6. Deploy PiGallery2 using `compose/pigallery2/compose.yaml`, change the
    initial administrator password, then install the verified-sightings
    extension.
-5. Optionally build the named/color GPX map image using
+7. Optionally build the named/color GPX map image using
    `pigallery2-map/build.sh` and point `PIGALLERY_IMAGE` at the result.
-6. Place a private production GPX file at the top of the photo tree. Use
+8. Place a private production GPX file at the top of the photo tree. Use
    `gpx/example.gpx` as the schema, never as real coordinates.
-7. Import `grafana/viltkamera-grafana-dashboard-no.json` and bind its datasource
+9. Import `grafana/viltkamera-grafana-dashboard-no.json` and bind its datasource
    input to the desired InfluxDB 2.x Flux datasource.
-8. Install `statskog-elg/` on a host that can reach InfluxDB, add a scoped
+10. Install `statskog-elg/` on a host that can reach InfluxDB, add a scoped
    write token and enable its ten-minute systemd timer.
-9. Configure a reverse proxy/TLS for PiGallery2. Keep SFTPGo WebAdmin and the
+11. Configure a reverse proxy/TLS for PiGallery2. Keep SFTPGo WebAdmin and the
    camera admin UI private.
-10. Deploy `information-site/viltkamera.html` to `/var/www/html/` on the Caddy
+12. Deploy `information-site/viltkamera.html` to `/var/www/html/` on the Caddy
    host. Preserve `https://8370.no/viltkamera.html` because physical camera QR
    codes point to it.
 
@@ -107,6 +115,7 @@ and containerized SFTPGo deployments:
 Back up these independently:
 
 - the entire photo tree (or storage snapshots)
+- quarantined video if it must be retained for camera/vendor troubleshooting
 - SFTPGo provider/config state and administrator/user records
 - `/etc/viltkamera-metadata/cameras.json`
 - `/etc/statskog-elg/statskog-elg.env` and
@@ -142,9 +151,11 @@ gpx/example.gpx                fake-coordinate GPX schema example
 grafana/                       Norwegian dashboard JSON
 information-site/              Caddy-hosted QR-code information page
 metadata/                      watcher and systemd service
+motd/                          additive service and quarantine status
 pigallery2-map/                PiGallery2 3.5.2 overlay and build script
 statskog-elg/                  ArcGIS-to-Influx collector, timer and Flux
 wildlife-ocr/                  tested Suntek temperature parsing
+wildlife-video-validator/      MP4 validator, quarantine and safety timer
 scripts/                       install, backup and validation helpers
 ```
 

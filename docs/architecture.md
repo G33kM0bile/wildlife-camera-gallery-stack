@@ -25,6 +25,18 @@ The inotify watcher calls the metadata handler only after `close_write` or
 only, maps the first relative path component to a configured camera, compares
 existing metadata, and uses ExifTool only when a change is required.
 
+Completed MP4 uploads are handled independently by
+`wildlife-video-validator.service`. After a five-second settling delay it runs
+`ffprobe`, retries failures three times, and moves persistently invalid files
+to the corresponding folder below `/srv/sftpgo/quarantine`. A six-hour timer
+performs the same validation across existing MP4 files in case an event was
+missed while the live watcher was stopped.
+
+The quarantine root is deliberately outside `/srv/sftpgo/data`; placing it
+inside the photo tree would let PiGallery discover the broken files again.
+JPEG OCR/metadata and video validation use separate services and failure
+domains.
+
 ### Camera admin UI
 
 The UI is intentionally small and has no independent account database. A login
@@ -82,6 +94,7 @@ and does not represent ArcGIS points as exact kill locations.
 - Trusted admin network -> SFTPGo WebAdmin and camera admin UI.
 - PiGallery2 -> photo storage: read-only.
 - Metadata service -> photo storage: narrowly scoped write access.
+- Video validator -> photo storage and quarantine: move invalid MP4 files only.
 - Elg collector -> Statskog: public read-only HTTPS queries.
 - Elg collector -> InfluxDB: token restricted to bucket write access.
 

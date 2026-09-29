@@ -20,11 +20,18 @@ command -v systemctl >/dev/null 2>&1 && {
     check "metadata watcher" systemctl is-active --quiet viltkamera-metadata
   systemctl list-unit-files viltkamera-camera-admin.service >/dev/null 2>&1 && \
     check "camera admin" systemctl is-active --quiet viltkamera-camera-admin
+  systemctl list-unit-files wildlife-video-validator.service >/dev/null 2>&1 && \
+    check "video validator" systemctl is-active --quiet wildlife-video-validator
+  systemctl list-unit-files wildlife-video-scan.timer >/dev/null 2>&1 && \
+    check "video safety scan timer" systemctl is-active --quiet wildlife-video-scan.timer
   systemctl list-unit-files statskog-elg.timer >/dev/null 2>&1 && \
     check "Statskog elg timer" systemctl is-active --quiet statskog-elg.timer
 }
 
 [[ -d /srv/sftpgo/data ]] && check "SFTPGo photo root" test -d /srv/sftpgo/data
+[[ -d /srv/sftpgo/quarantine ]] && \
+  check "video quarantine outside photo root" \
+    sh -c 'case /srv/sftpgo/quarantine/ in /srv/sftpgo/data/*) exit 1;; *) test -d /srv/sftpgo/quarantine;; esac'
 [[ -d /photos ]] && check "PiGallery photo mount" mountpoint -q /photos
 
 if command -v docker >/dev/null 2>&1 && [[ -f /opt/pigallery2/compose.yaml ]]; then

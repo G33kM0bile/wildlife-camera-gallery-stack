@@ -14,6 +14,16 @@ for n in 01 02 03 04 05; do
 done
 ```
 
+Create the video quarantine as a sibling of `data`, never below it:
+
+```bash
+install -d -o sftpgo -g sftpgo -m 0750 /srv/sftpgo/quarantine
+for n in 01 02 03 04 05; do
+  install -d -o sftpgo -g sftpgo -m 0750 \
+    "/srv/sftpgo/quarantine/hc960-$n"
+done
+```
+
 Expose that tree to the PiGallery host using a storage mount appropriate for
 the lab (bind mount, NFS, CephFS, Proxmox mount point, etc.). Mount it read-only
 at `/photos` on the PiGallery host. Verify with:
@@ -68,7 +78,27 @@ The admin UI defaults to `127.0.0.1:9095`. Change its systemd environment only
 if a trusted LAN or reverse proxy must reach it, then run `systemctl
 daemon-reload` and restart the service.
 
-## 4. Deploy PiGallery2
+## 4. Install MP4 validation
+
+The video validator requires the existing wildlife OCR virtual environment and
+installs `ffprobe` plus `watchdog`:
+
+```bash
+sudo ./wildlife-video-validator/install.sh
+sudo systemctl start wildlife-video-scan.service
+sudo journalctl -u wildlife-video-scan.service --no-pager
+```
+
+Confirm that invalid files, if any, moved to `/srv/sftpgo/quarantine`, then
+optionally add the status block to the existing system MOTD:
+
+```bash
+sudo ./motd/install.sh
+```
+
+See `wildlife-video-validator/README.md` before changing paths or retry timing.
+
+## 5. Deploy PiGallery2
 
 ```bash
 install -d -m 0750 /opt/pigallery2/{config,db,tmp}
@@ -84,7 +114,7 @@ database/indexing settings appropriate for the library, and run the first
 index. PiGallery2 should see `/app/data/images` inside the container; do not
 change that internal path in the UI.
 
-## 5. Install verified sightings
+## 6. Install verified sightings
 
 ```bash
 install -d -m 0750 \
@@ -103,7 +133,7 @@ automatically. After marking one photo, confirm the writable registry exists:
 /opt/pigallery2/config/extensions/verified-sightings/verified-sightings.json
 ```
 
-## 6. Build the GPX waypoint image (optional)
+## 7. Build the GPX waypoint image (optional)
 
 The overlay is version-specific and currently targets 3.5.2:
 
@@ -115,19 +145,19 @@ cd pigallery2-map
 Set `PIGALLERY_IMAGE=viltkamera/pigallery2:3.5.2-map-waypoints` in the PiGallery
 `.env`, then recreate the container. See [maps-and-gpx.md](maps-and-gpx.md).
 
-## 7. Add a private GPX map
+## 8. Add a private GPX map
 
 Copy `gpx/example.gpx` outside the repository, replace every fake coordinate,
 and place the production file at the top of the photo tree. Include `name`,
 `desc`, `sym` and `type` for useful popups and deterministic colors.
 
-## 8. Reverse proxy and DNS
+## 9. Reverse proxy and DNS
 
 Terminate TLS at the preferred reverse proxy and proxy only PiGallery's HTTP
 port. Preserve normal forwarding headers and WebSocket support. Do not bypass
 PiGallery authentication just because the URL is public.
 
-## 9. QR-code information page
+## 10. QR-code information page
 
 Keep the existing public URL stable because it is encoded in labels attached
 to the physical cameras:
@@ -140,13 +170,13 @@ install -o root -g root -m 0644 \
 Restore `/var/www/html/grunneiertillatelse.jpg` from protected backup. It is
 not stored in Git. See `information-site/README.md`.
 
-## 10. Grafana (optional)
+## 11. Grafana (optional)
 
 Import `grafana/viltkamera-grafana-dashboard-no.json`, choose the InfluxDB 2.x
 Flux datasource when prompted, and verify the default 48-hour range. The
 dashboard contains no datasource UID or credentials.
 
-## 11. Statskog elg collector (optional)
+## 12. Statskog elg collector (optional)
 
 Install this on a host that can reach both Statskog over HTTPS and InfluxDB:
 
@@ -164,7 +194,7 @@ Use a dedicated token with write access only to `Wildlife`. The first run
 imports the available history; later runs send only new or changed records.
 See `statskog-elg/README.md` for schema and recovery behaviour.
 
-## 12. Acceptance test
+## 13. Acceptance test
 
 Run `scripts/validate-deployment.sh` locally on each relevant host, then test:
 
@@ -179,3 +209,6 @@ Run `scripts/validate-deployment.sh` locally on each relevant host, then test:
    displays the selected camera ID.
 9. `statskog-elg.timer` is active and a second manual collector run reports no
    new or changed felling records.
+10. `wildlife-video-validator.service` is active, the six-hour timer is
+    enabled, and a full scan reports no broken MP4 remaining below
+    `/srv/sftpgo/data`.

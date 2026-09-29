@@ -1,0 +1,33 @@
+#!/bin/sh
+
+state() {
+  current=$(systemctl is-active "$1" 2>/dev/null || true)
+  if [ "$current" = active ]; then
+    printf '\033[32mactive\033[0m'
+  else
+    printf '\033[31m%s\033[0m' "${current:-unknown}"
+  fi
+}
+
+printf '\n\033[1;36mWildlife camera services\033[0m\n'
+printf '  SFTPGo:          %s\n' "$(state sftpgo.service)"
+printf '  OCR watcher:     %s\n' "$(state wildlife-ocr.service)"
+printf '  Video validator: %s\n' "$(state wildlife-video-validator.service)"
+
+if systemctl is-enabled --quiet wildlife-video-scan.timer 2>/dev/null; then
+  next=$(systemctl show wildlife-video-scan.timer -p NextElapseUSecRealtime --value 2>/dev/null)
+  printf '  Periodic scan:   \033[32menabled\033[0m%s\n' "${next:+ (next: $next)}"
+else
+  printf '  Periodic scan:   \033[31mdisabled\033[0m\n'
+fi
+
+if [ -d /srv/sftpgo/quarantine ]; then
+  quarantined=$(find /srv/sftpgo/quarantine -type f -iname '*.mp4' 2>/dev/null | wc -l)
+  printf '  Quarantine:      /srv/sftpgo/quarantine (%s MP4)\n' "$quarantined"
+else
+  printf '  Quarantine:      /srv/sftpgo/quarantine (missing)\n'
+fi
+
+printf '%s\n' \
+  '  Logs: journalctl -u wildlife-video-validator -f' \
+  '  Scan: systemctl start wildlife-video-scan.service'

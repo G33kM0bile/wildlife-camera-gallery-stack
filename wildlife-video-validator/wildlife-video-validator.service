@@ -1,0 +1,21 @@
+[Unit]
+Description=Validate completed wildlife-camera MP4 uploads
+After=network.target sftpgo.service
+Wants=sftpgo.service
+
+[Service]
+Type=simple
+User=sftpgo
+Group=sftpgo
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/wildlife-ocr/venv/bin/python /opt/wildlife-video-validator/video_validator.py
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/sftpgo/data /srv/sftpgo/quarantine
+
+[Install]
+WantedBy=multi-user.target

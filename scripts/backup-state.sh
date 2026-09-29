@@ -24,6 +24,11 @@ for candidate in \
   /var/lib/statskog-elg \
   /etc/systemd/system/statskog-elg.service \
   /etc/systemd/system/statskog-elg.timer \
+  /etc/systemd/system/wildlife-video-validator.service \
+  /etc/systemd/system/wildlife-video-scan.service \
+  /etc/systemd/system/wildlife-video-scan.timer \
+  /etc/update-motd.d/99-wildlife-camera \
+  /opt/wildlife-video-validator \
   /etc/systemd/system/viltkamera-metadata.service \
   /etc/systemd/system/viltkamera-camera-admin.service \
   /opt/viltkamera-camera-admin \

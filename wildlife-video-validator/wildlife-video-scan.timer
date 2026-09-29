@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic safety scan of wildlife-camera MP4 files
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=6h
+Persistent=true
+Unit=wildlife-video-scan.service
+
+[Install]
+WantedBy=timers.target
