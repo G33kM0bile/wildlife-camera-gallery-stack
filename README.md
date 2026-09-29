@@ -8,8 +8,9 @@ and importing a Norwegian Grafana dashboard.
 The repository contains no photos, credentials, user databases, or real camera
 and hunting coordinates. The QR-code information page intentionally preserves
 its already-public service URLs and contact text so it can be restored without
-changing the physical camera labels. Keep repository access appropriately
-restricted.
+changing the physical camera labels. The repository is designed to be safe for
+public access; review `SECURITY.md` and the QR information page before adding
+deployment-specific material.
 
 ## What is included
 
