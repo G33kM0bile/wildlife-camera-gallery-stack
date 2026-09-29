@@ -9,8 +9,9 @@ contact details or adding another external service.
 
 The deliberately public surface currently includes the QR information URL,
 gallery/login URL, SFTPGo login URL, public Grafana dashboard, status page and
-the contact telephone number shown on the physical-camera information page.
-None of those links should be treated as a substitute for authentication.
+an anonymized example contact block. Real contact details belong only in the
+deployed copy or another protected configuration source. None of the public
+links should be treated as a substitute for authentication.
 
 Keep the SFTPGo WebAdmin API and camera-admin service on a trusted network or
 behind an authenticated reverse proxy. Publish only PiGallery2, enable its

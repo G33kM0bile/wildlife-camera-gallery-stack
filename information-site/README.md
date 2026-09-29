@@ -9,6 +9,11 @@ https://8370.no/viltkamera.html?id=hc960-01
 
 Do not move or redirect that URL without replacing every printed QR code.
 
+The committed contact block uses only example data (`Ola Normann`,
+`Eksempelveien 1`, `0001 Oslo` and `+47 123 45 678`). Keep real contact
+details in the deployed copy or another protected configuration source; do not
+commit them to this public repository.
+
 ## Deployment
 
 Copy the page to the existing Caddy document root:
