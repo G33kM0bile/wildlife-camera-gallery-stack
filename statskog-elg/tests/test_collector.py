@@ -18,6 +18,8 @@ def config(state_file: Path | None = None):
     return collector.Config(
         arcgis_url=collector.DEFAULT_ARCGIS_URL,
         arcgis_layer=0,
+        jaktfelt_lookup_layer=4,
+        jaktlag_period_layer=8,
         jaktfelt_id="1840J0096",
         jaktfelt_name="Storjord Øst",
         art="Elg",
@@ -29,6 +31,7 @@ def config(state_file: Path | None = None):
         timeout_seconds=30,
         page_size=1000,
         batch_size=500,
+        local_timezone="Europe/Oslo",
     )
 
 
@@ -59,6 +62,9 @@ class CollectorTests(unittest.TestCase):
             "Slaktevekt": "59,9",
             "Kontrollert_vekt": None,
             "GlobalID": "{75250C4B-E457-4DE9-8BF7-0391E6277293}",
+            "_jaktlag": "Jaktlag 1",
+            "_jaktperiode_start": "2024-09-25",
+            "_jaktperiode_slutt": "2024-10-09",
         }
         line = collector.build_line("60200", row, config())
         self.assertTrue(line.startswith("elg_felling,"))
@@ -66,6 +72,8 @@ class CollectorTests(unittest.TestCase):
         self.assertIn("storvilt_id=60200", line)
         self.assertIn("slaktevekt=59.9", line)
         self.assertIn('kategori_skutt="Årskalv okse (11)"', line)
+        self.assertIn('jaktlag="Jaktlag 1"', line)
+        self.assertIn('jaktperiode_start="2024-09-25"', line)
         self.assertTrue(line.endswith(" 1730937600000000000"))
 
     def test_zero_weight_is_preserved_but_not_numeric(self):
@@ -98,6 +106,43 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual({}, collector.changed_events(current, state))
         row["Kategori"] = "Ungdyr"
         self.assertEqual({"1": row}, collector.changed_events(current, state))
+
+    def test_hunting_period_boundaries_are_inclusive(self):
+        oslo = collector.ZoneInfo("Europe/Oslo")
+        periods = [
+            collector.HuntingPeriod(
+                collector.date(2026, 9, 25),
+                collector.date(2026, 10, 9),
+                "Jaktlag 1",
+            ),
+            collector.HuntingPeriod(
+                collector.date(2026, 10, 10),
+                collector.date(2026, 10, 31),
+                "Jaktlag 2",
+            ),
+        ]
+
+        def epoch_ms(year, month, day):
+            return int(collector.datetime(year, month, day, 12, tzinfo=oslo).timestamp() * 1000)
+
+        rows = {
+            "a": {"Dato": epoch_ms(2026, 9, 25)},
+            "b": {"Dato": epoch_ms(2026, 10, 9)},
+            "c": {"Dato": epoch_ms(2026, 10, 10)},
+            "d": {"Dato": epoch_ms(2026, 11, 1)},
+        }
+        result = collector.enrich_with_hunting_team(rows, periods, "Europe/Oslo")
+        self.assertEqual("Jaktlag 1", result["a"]["_jaktlag"])
+        self.assertEqual("Jaktlag 1", result["b"]["_jaktlag"])
+        self.assertEqual("Jaktlag 2", result["c"]["_jaktlag"])
+        self.assertEqual("Andre", result["d"]["_jaktlag"])
+
+    def test_team_enrichment_changes_event_fingerprint(self):
+        first = {"Dato": 1, "_jaktlag": "Jaktlag 1"}
+        second = {"Dato": 1, "_jaktlag": "Jaktlag 2"}
+        self.assertNotEqual(
+            collector.event_fingerprint(first), collector.event_fingerprint(second)
+        )
 
     def test_state_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:

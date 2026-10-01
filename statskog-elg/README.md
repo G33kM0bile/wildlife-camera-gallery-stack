@@ -33,6 +33,12 @@ therefore do not skew averages.
 named `kategori` and `kategori_skutt`. They are deliberately not tags: a source
 correction then updates the existing point instead of creating another series.
 
+The collector also resolves the field's public numeric ID and reads only the
+start/end dates from the public hunting-period layer. Periods are labelled by
+start date as `Jaktlag 1`, `Jaktlag 2`, and `Andre`; leader names and phone
+numbers are neither requested nor stored. Event dates are matched in
+`Europe/Oslo`, including both the first and last day of each period.
+
 ## Install on the host that can reach InfluxDB
 
 ```bash
@@ -93,6 +99,8 @@ Fields include:
 - `felling=1`
 - `kategori` (string)
 - `kategori_skutt` (string)
+- `jaktlag` (`Jaktlag 1`, `Jaktlag 2`, or `Andre`)
+- `jaktperiode_start` and `jaktperiode_slutt` (ISO dates when matched)
 - `slaktevekt` (float, only for positive parsed values)
 - `slaktevekt_raw` (string)
 - `slaktevekt_gyldig` (boolean)

@@ -2409,7 +2409,7 @@
         "type": "influxdb",
         "uid": "${DS_WILDLIFE}"
       },
-      "description": "Kumulativt antall fellinger i inneværende kalenderår.",
+      "description": "Kumulative fellinger i inneværende kalenderår fordelt på nøytrale jaktlagsnavn. Periodene hentes fra Statskogs offentlige ArcGIS-data; navn og telefonnummer lagres ikke.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2458,7 +2458,53 @@
           },
           "unit": "short"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Jaktlag 1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Jaktlag 2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Andre"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "gray",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -2489,7 +2535,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "import \"date\"\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group(columns: [\"jaktfelt_id\"])\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"_value\"])\n  |> yield(name: \"Felt\")",
+          "query": "import \"date\"\n\nbase = from(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and (r._field == \"felling\" or r._field == \"jaktlag\"))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({r with jaktlag: if exists r.jaktlag then r.jaktlag else \"Andre\"}))\n\njaktlag1 = base\n  |> filter(fn: (r) => r.jaktlag == \"Jaktlag 1\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Jaktlag 1\"})\n\njaktlag2 = base\n  |> filter(fn: (r) => r.jaktlag == \"Jaktlag 2\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Jaktlag 2\"})\n\nandre = base\n  |> filter(fn: (r) => r.jaktlag == \"Andre\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Andre\"})\n\nunion(tables: [jaktlag1, jaktlag2, andre])\n  |> yield(name: \"Fellinger per jaktlag\")",
           "refId": "A"
         }
       ],

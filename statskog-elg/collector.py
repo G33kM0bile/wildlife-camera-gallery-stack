@@ -14,8 +14,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo
 
 
 LOG = logging.getLogger("statskog-elg")
@@ -29,6 +31,8 @@ SOURCE_FIELDS = (
     "Kontrollert_vekt,JaktfeltID,StorviltID,HjorteviltID,GlobalID,"
     "OBJECTID,created_date,last_edited_date"
 )
+JAKTFELT_LOOKUP_FIELDS = "JaktfeltUnikID"
+JAKTLAG_PERIOD_FIELDS = "Jaktstart,Jaktslutt,JaktfeltUnikID"
 
 
 class CollectorError(RuntimeError):
@@ -39,6 +43,8 @@ class CollectorError(RuntimeError):
 class Config:
     arcgis_url: str
     arcgis_layer: int
+    jaktfelt_lookup_layer: int
+    jaktlag_period_layer: int
     jaktfelt_id: str
     jaktfelt_name: str
     art: str
@@ -50,6 +56,7 @@ class Config:
     timeout_seconds: int
     page_size: int
     batch_size: int
+    local_timezone: str
 
     @classmethod
     def from_env(cls, require_influx: bool = True) -> "Config":
@@ -71,6 +78,8 @@ class Config:
         config = cls(
             arcgis_url=env("STATSKOG_ARCGIS_URL", DEFAULT_ARCGIS_URL).rstrip("/"),
             arcgis_layer=int(env("STATSKOG_LAYER", "0")),
+            jaktfelt_lookup_layer=int(env("STATSKOG_JAKTFELT_LAYER", "4")),
+            jaktlag_period_layer=int(env("STATSKOG_JAKTLAG_LAYER", "8")),
             jaktfelt_id=env("JAKTFELT_ID", "1840J0096"),
             jaktfelt_name=env("JAKTFELT_NAME", "Storjord Øst"),
             art=env("ART", "Elg"),
@@ -84,12 +93,17 @@ class Config:
             timeout_seconds=int(env("HTTP_TIMEOUT_SECONDS", "30")),
             page_size=int(env("ARCGIS_PAGE_SIZE", "1000")),
             batch_size=int(env("INFLUX_BATCH_SIZE", "500")),
+            local_timezone=env("LOCAL_TIMEZONE", "Europe/Oslo"),
         )
         if not config.jaktfelt_id or not config.art:
             raise CollectorError("JAKTFELT_ID og ART kan ikke være tomme")
         if config.timeout_seconds < 1 or config.page_size < 1 or config.batch_size < 1:
             raise CollectorError("Timeout, sidestørrelse og batchstørrelse må være positive")
         _require_http_url(config.arcgis_url, "STATSKOG_ARCGIS_URL")
+        try:
+            ZoneInfo(config.local_timezone)
+        except (KeyError, ValueError) as exc:
+            raise CollectorError("LOCAL_TIMEZONE må være en gyldig IANA-tidssone") from exc
         if require_influx:
             _require_http_url(config.influx_url, "INFLUX_URL")
         return config
@@ -165,6 +179,128 @@ def fetch_events(config: Config) -> list[dict[str, Any]]:
             break
 
     return rows
+
+
+@dataclass(frozen=True)
+class HuntingPeriod:
+    start: date
+    end: date
+    label: str
+
+
+def _query_features(
+    config: Config,
+    layer: int,
+    where: str,
+    out_fields: str,
+    order_by: str = "",
+) -> list[dict[str, Any]]:
+    params = {
+        "f": "json",
+        "where": where,
+        "outFields": out_fields,
+        "returnGeometry": "false",
+    }
+    if order_by:
+        params["orderByFields"] = order_by
+    endpoint = f"{config.arcgis_url}/{layer}/query"
+    payload = _json_request(
+        endpoint + "?" + urllib.parse.urlencode(params), config.timeout_seconds
+    )
+    features = payload.get("features", [])
+    if not isinstance(features, list):
+        raise CollectorError("ArcGIS-svaret mangler en gyldig features-liste")
+    return [
+        feature["attributes"]
+        for feature in features
+        if isinstance(feature, dict) and isinstance(feature.get("attributes"), dict)
+    ]
+
+
+def fetch_jaktfelt_unik_id(config: Config) -> int:
+    """Resolve the public field ID without requesting leader/contact details."""
+    rows = _query_features(
+        config,
+        config.jaktfelt_lookup_layer,
+        f"JaktfeltID = {_sql_literal(config.jaktfelt_id)}",
+        JAKTFELT_LOOKUP_FIELDS,
+    )
+    values = {
+        value
+        for row in rows
+        if (value := _as_int(row.get("JaktfeltUnikID"))) is not None
+    }
+    if len(values) != 1:
+        raise CollectorError(
+            f"Forventet ett JaktfeltUnikID for {config.jaktfelt_id}, fant {len(values)}"
+        )
+    return values.pop()
+
+
+def _local_date(timestamp_ms: Any, timezone_name: str) -> date | None:
+    value = _as_int(timestamp_ms)
+    if value is None or value <= 0:
+        return None
+    return datetime.fromtimestamp(
+        value / 1000, tz=timezone.utc
+    ).astimezone(ZoneInfo(timezone_name)).date()
+
+
+def fetch_hunting_periods(
+    config: Config, jaktfelt_unik_id: int, years: Iterable[int]
+) -> list[HuntingPeriod]:
+    """Fetch only period boundaries and assign privacy-safe labels by start date."""
+    periods: list[HuntingPeriod] = []
+    for year in sorted(set(years)):
+        where = (
+            f"JaktfeltUnikID = {jaktfelt_unik_id} AND "
+            f"Jaktstart >= DATE '{year}-01-01' AND "
+            f"Jaktstart < DATE '{year + 1}-01-01'"
+        )
+        rows = _query_features(
+            config,
+            config.jaktlag_period_layer,
+            where,
+            JAKTLAG_PERIOD_FIELDS,
+            "Jaktstart ASC",
+        )
+        valid: list[tuple[date, date]] = []
+        for row in rows:
+            start = _local_date(row.get("Jaktstart"), config.local_timezone)
+            end = _local_date(row.get("Jaktslutt"), config.local_timezone)
+            if start is not None and end is not None and start <= end:
+                valid.append((start, end))
+        for index, (start, end) in enumerate(sorted(set(valid)), start=1):
+            label = f"Jaktlag {index}" if index <= 2 else "Andre"
+            periods.append(HuntingPeriod(start=start, end=end, label=label))
+    return periods
+
+
+def enrich_with_hunting_team(
+    events: dict[str, dict[str, Any]],
+    periods: Iterable[HuntingPeriod],
+    timezone_name: str,
+) -> dict[str, dict[str, Any]]:
+    """Add neutral team/period fields; inclusive dates match the public map."""
+    period_list = list(periods)
+    enriched: dict[str, dict[str, Any]] = {}
+    for event_id, source in events.items():
+        event = dict(source)
+        event_date = _local_date(event.get("Dato"), timezone_name)
+        match = next(
+            (
+                period
+                for period in period_list
+                if event_date is not None and period.start <= event_date <= period.end
+            ),
+            None,
+        )
+        event["_jaktlag"] = match.label if match else "Andre"
+        if match:
+            event["_jaktperiode_start"] = match.start.isoformat()
+            event["_jaktperiode_slutt"] = match.end.isoformat()
+        enriched[event_id] = event
+    return enriched
 
 
 def stable_event_id(event: dict[str, Any]) -> str:
@@ -272,9 +408,18 @@ def build_line(event_id: str, event: dict[str, Any], config: Config) -> str:
     }
     fields: dict[str, str] = {
         "felling": "1i",
+        "jaktlag": _field_string(event.get("_jaktlag") or "Andre"),
         "kategori": _field_string(event.get("Kategori") or "Ukjent"),
         "kategori_skutt": _field_string(event.get("Kategoriskutt") or "Ukjent"),
     }
+
+    for source_name, field_name in (
+        ("_jaktperiode_start", "jaktperiode_start"),
+        ("_jaktperiode_slutt", "jaktperiode_slutt"),
+    ):
+        value = event.get(source_name)
+        if value:
+            fields[field_name] = _field_string(value)
 
     raw_weight = event.get("Slaktevekt")
     parsed_weight = parse_positive_number(raw_weight)
@@ -442,19 +587,22 @@ def run(argv: list[str]) -> int:
         duplicate_count,
     )
 
-    if args.check_api:
-        # Convert epoch milliseconds without importing timezone-sensitive helpers.
-        from datetime import datetime, timezone
+    years = {
+        event_date.year
+        for event in unique.values()
+        if (event_date := _local_date(event.get("Dato"), config.local_timezone))
+        is not None
+    }
+    jaktfelt_unik_id = fetch_jaktfelt_unik_id(config)
+    periods = fetch_hunting_periods(config, jaktfelt_unik_id, years)
+    unique = enrich_with_hunting_team(unique, periods, config.local_timezone)
+    LOG.info(
+        "Fant %d jaktlagsperioder for offentlig felt-ID %d",
+        len(periods),
+        jaktfelt_unik_id,
+    )
 
-        years = sorted(
-            {
-                datetime.fromtimestamp(
-                    (_as_int(event.get("Dato")) or 0) / 1000, tz=timezone.utc
-                ).year
-                for event in unique.values()
-                if _as_int(event.get("Dato"))
-            }
-        )
+    if args.check_api:
         print(
             json.dumps(
                 {
@@ -463,7 +611,14 @@ def run(argv: list[str]) -> int:
                     "raw_rows": len(source_rows),
                     "unique_events": len(unique),
                     "duplicate_rows": duplicate_count,
-                    "years": years,
+                    "years": sorted(years),
+                    "hunting_periods": len(periods),
+                    "team_counts": {
+                        label: sum(
+                            1 for event in unique.values() if event["_jaktlag"] == label
+                        )
+                        for label in ("Jaktlag 1", "Jaktlag 2", "Andre")
+                    },
                 },
                 ensure_ascii=False,
                 indent=2,
