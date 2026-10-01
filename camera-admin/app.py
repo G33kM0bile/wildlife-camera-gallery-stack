@@ -337,7 +337,7 @@ class CameraAdminHandler(BaseHTTPRequestHandler):
             "default-src 'self'; script-src 'self'; "
             "style-src 'self'; style-src-attr 'unsafe-inline'; "
             "img-src 'self' data: "
-            "https://tile.openstreetmap.org; connect-src 'self'; "
+            "https://wms.geonorge.no; connect-src 'self'; "
             "frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         )
 

@@ -230,7 +230,11 @@ function renderCameraList() {
 
 function initializeMap() {
   state.map = L.map("map", { zoomControl: true, attributionControl: false });
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.topo", {
+    layers: "topo",
+    format: "image/png",
+    transparent: false,
+    version: "1.1.1",
     maxZoom: 19,
     minZoom: 4,
   }).addTo(state.map);
