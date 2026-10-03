@@ -60,7 +60,7 @@ h2 { margin-bottom: 0; font-size: 1.12rem; letter-spacing: -0.02em; }
 }
 
 .login-card {
-  width: min(100%, 28rem);
+  width: min(100%, 46rem);
   padding: 2.25rem;
   border: 1px solid var(--border);
   border-radius: 1.35rem;
@@ -121,6 +121,69 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 
 .form-error { margin: 0.9rem 0 0; color: var(--danger); font-size: 0.84rem; }
 .privacy-note { margin: 1.2rem 0 0; color: #77847f; font-size: 0.75rem; line-height: 1.45; }
+
+.service-hub {
+  margin-top: 1.7rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.service-hub-heading { margin-bottom: 0.9rem; }
+.service-hub-heading h2 { font-size: 1rem; }
+
+.service-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.service-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.72rem;
+  min-height: 4.25rem;
+  padding: 0.72rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.82rem;
+  background: rgba(11, 16, 15, 0.56);
+  color: var(--text);
+  text-decoration: none;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.service-link:hover,
+.service-link:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.service-icon {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border-radius: 0.68rem;
+  background: var(--surface-soft);
+  font-size: 1.05rem;
+}
+
+.service-link strong,
+.service-link small { display: block; }
+.service-link strong { margin-bottom: 0.18rem; font-size: 0.84rem; }
+.service-link small { color: var(--muted); font-size: 0.7rem; line-height: 1.35; }
+.service-arrow { color: var(--accent-strong); font-size: 0.95rem; }
+
+.service-link:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+@media (max-width: 620px) {
+  .login-shell { padding: 1rem; align-items: start; }
+  .login-card { padding: 1.4rem; }
+  .service-links { grid-template-columns: 1fr; }
+  .service-link:last-child:nth-child(odd) { grid-column: auto; }
+}
 
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 
