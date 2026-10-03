@@ -8,6 +8,8 @@ layer; no map API key is stored by this component.
 The unauthenticated login view also acts as a small service portal with links
 to the gallery, public dashboard, status page, camera information page and
 SFTPGo. It does not expose internal host or container addresses.
+Elgbørsen and Storviltrapporten are listed separately as external resources so
+users can distinguish third-party services from the self-hosted stack.
 
 Copy `config/cameras.example.json` to the ignored `config/cameras.json` and
 replace all fake values before installation. The top-level installer handles

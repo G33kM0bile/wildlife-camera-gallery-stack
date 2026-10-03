@@ -130,6 +130,7 @@ input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px
 
 .service-hub-heading { margin-bottom: 0.9rem; }
 .service-hub-heading h2 { font-size: 1rem; }
+.service-hub-secondary { margin-top: 1.35rem; }
 
 .service-links {
   display: grid;
