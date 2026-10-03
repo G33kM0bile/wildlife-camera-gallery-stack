@@ -8,28 +8,15 @@
     <title>Kameraoppsett · Viltkamera</title>
     <link rel="preconnect" href="https://wms.geonorge.no" crossorigin>
     <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v=1.9.4">
-    <link rel="stylesheet" href="/static/styles.css?v=1.4.0">
+    <link rel="stylesheet" href="/static/styles.css?v=1.6.0">
   </head>
   <body>
     <div id="login-view" class="login-shell" hidden>
       <main class="login-card" aria-labelledby="login-title">
         <div class="brand-mark" aria-hidden="true">🦌</div>
         <p class="eyebrow">Viltkamera</p>
-        <h1 id="login-title">Kameraoppsett</h1>
-        <p class="login-copy">Logg inn med en SFTPGo-administrator for å endre plassering og metadata for nye bilder.</p>
-        <form id="login-form" novalidate>
-          <label>
-            Administratornavn
-            <input name="username" autocomplete="username" required maxlength="128">
-          </label>
-          <label>
-            Passord
-            <input name="password" type="password" autocomplete="current-password" required maxlength="512">
-          </label>
-          <p id="login-error" class="form-error" role="alert" hidden></p>
-          <button class="primary-button full-width" type="submit">Logg inn</button>
-        </form>
-        <p class="privacy-note">Kameraoppsettet krever innlogging. Passordet lagres ikke.</p>
+        <h1 id="login-title">Viltkameraportal</h1>
+        <p class="login-copy portal-intro">Samlet inngang til galleri, statistikk, driftsstatus og nyttige jaktressurser.</p>
 
         <section class="service-hub" aria-labelledby="service-hub-title">
           <div class="service-hub-heading">
@@ -81,6 +68,29 @@
             </a>
           </div>
         </section>
+
+        <section class="login-access" aria-labelledby="admin-login-title">
+          <p class="eyebrow">Administrasjon</p>
+          <h2 id="admin-login-title">Kameraoppsett</h2>
+          <p class="login-copy">Logg inn for å endre plassering og metadata for nye bilder.</p>
+          <form id="login-form" novalidate>
+            <label>
+              Administratornavn
+              <input name="username" autocomplete="username" required maxlength="128">
+            </label>
+            <label>
+              Passord
+              <input name="password" type="password" autocomplete="current-password" required maxlength="512">
+            </label>
+            <p id="login-error" class="form-error" role="alert" hidden></p>
+            <button class="secondary-button full-width login-button" type="submit">Logg inn</button>
+          </form>
+          <p class="privacy-note">Krever SFTPGo-administrator. Passordet lagres ikke.</p>
+        </section>
+
+        <footer class="portal-footer">
+          <a href="https://github.com/G33kM0bile/wildlife-camera-gallery-stack" target="_blank" rel="noopener noreferrer">Kildekode og dokumentasjon på GitHub ↗</a>
+        </footer>
       </main>
     </div>
 
@@ -141,6 +151,7 @@
 
       <footer class="footer-bar">
         <span id="revision-label">Laster konfigurasjon …</span>
+        <a href="https://github.com/G33kM0bile/wildlife-camera-gallery-stack" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
         <span id="username-label"></span>
       </footer>
     </div>

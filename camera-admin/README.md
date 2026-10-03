@@ -7,9 +7,13 @@ The placement map uses Kartverket's public topographic WMS as its background
 layer; no map API key is stored by this component.
 The unauthenticated login view also acts as a small service portal with links
 to the gallery, public dashboard, status page, camera information page and
-SFTPGo. It does not expose internal host or container addresses.
+SFTPGo. Portal links are shown first; the visually subdued administrator login
+is placed at the bottom. It does not expose internal host or container
+addresses.
 Elgbørsen and Storviltrapporten are listed separately as external resources so
 users can distinguish third-party services from the self-hosted stack.
+Both the portal and authenticated editor footer link back to this GitHub
+repository for source code and documentation.
 
 Copy `config/cameras.example.json` to the ignored `config/cameras.json` and
 replace all fake values before installation. The top-level installer handles
