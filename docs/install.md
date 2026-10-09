@@ -174,7 +174,37 @@ not stored in Git. See `information-site/README.md`.
 
 Import `grafana/viltkamera-grafana-dashboard-no.json`, choose the InfluxDB 2.x
 Flux datasource when prompted, and verify the default 48-hour range. The
-dashboard contains no datasource UID or credentials.
+dashboard contains no datasource UID or credentials. Camera and activity rows
+start collapsed so an idle camera season does not dominate the public view.
+
+Grafana 13 can hide those rows completely in the authenticated dashboard. Add
+a hidden query variable named `active_cameras`, refresh it on time-range changes,
+and return the comma-separated camera tags that have `image = 1` in
+`v.timeRangeStart` to `v.timeRangeStop`:
+
+```flux
+from(bucket: "Wildlife")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) =>
+    r._measurement == "wildlife_camera" and
+    r._field == "image" and
+    r._value == 1
+  )
+  |> keep(columns: ["camera"])
+  |> distinct(column: "camera")
+  |> group()
+  |> sort(columns: ["camera"])
+  |> reduce(
+    identity: {_value: ""},
+    fn: (r, accumulator) => ({
+      _value: accumulator._value + "," + r.camera
+    })
+  )
+```
+
+Add a row **Show** rule using `.*hc960-01.*` through `.*hc960-05.*`, and
+use `.+` for the activity row. External/public dashboards do not support
+template variables, so the collapsed rows are the intentional public fallback.
 
 ## 12. Statskog elg collector (optional)
 

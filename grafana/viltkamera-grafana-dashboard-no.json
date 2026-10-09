@@ -70,7 +70,7 @@
       "id": 1,
       "title": "Kamera hc960-01",
       "type": "row",
-      "collapsed": false,
+      "collapsed": true,
       "panels": []
     },
     {
@@ -376,7 +376,7 @@
       "id": 6,
       "title": "Kamera hc960-02",
       "type": "row",
-      "collapsed": false,
+      "collapsed": true,
       "panels": []
     },
     {
@@ -682,7 +682,7 @@
       "id": 11,
       "title": "Kamera hc960-03",
       "type": "row",
-      "collapsed": false,
+      "collapsed": true,
       "panels": []
     },
     {
@@ -988,7 +988,7 @@
       "id": 16,
       "title": "Kamera hc960-04",
       "type": "row",
-      "collapsed": false,
+      "collapsed": true,
       "panels": []
     },
     {
@@ -1294,7 +1294,7 @@
       "id": 21,
       "title": "Kamera hc960-05",
       "type": "row",
-      "collapsed": false,
+      "collapsed": true,
       "panels": []
     },
     {
@@ -1600,7 +1600,7 @@
       "id": 26,
       "title": "Aktivitet og historikk",
       "type": "row",
-      "collapsed": false,
+      "collapsed": true,
       "panels": []
     },
     {
