@@ -24,7 +24,8 @@ deployment-specific material.
 - A PiGallery2 3.5.2 map overlay that reads GPX waypoint name, description,
   symbol and type, shows human-readable popups, and colors marker categories.
 - An importable Norwegian Grafana dashboard using an InfluxDB/Flux datasource
-  selected during import.
+  selected during import. Its public-compatible camera table automatically
+  lists only cameras with image activity inside the selected time range.
 - A Statskog ArcGIS collector that imports deduplicated moose harvest records
   for `Storjord Øst` into the existing InfluxDB bucket every ten minutes.
 - A hardened Suntek temperature parser that tolerates missing/misread degree

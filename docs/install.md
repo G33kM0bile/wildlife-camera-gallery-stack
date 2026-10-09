@@ -174,37 +174,23 @@ not stored in Git. See `information-site/README.md`.
 
 Import `grafana/viltkamera-grafana-dashboard-no.json`, choose the InfluxDB 2.x
 Flux datasource when prompted, and verify the default 48-hour range. The
-dashboard contains no datasource UID or credentials. Camera and activity rows
-start collapsed so an idle camera season does not dominate the public view.
+dashboard contains no datasource UID or credentials.
 
-Grafana 13 can hide those rows completely in the authenticated dashboard. Add
-a hidden query variable named `active_cameras`, refresh it on time-range changes,
-and return the comma-separated camera tags that have `image = 1` in
-`v.timeRangeStart` to `v.timeRangeStop`:
+The camera summary is a data-driven table. It returns one row per camera that
+has at least one `image = 1` event inside the selected dashboard time range.
+Inactive cameras therefore disappear without template variables, and active
+cameras appear automatically when the range is widened. This works in both
+authenticated and external/public Grafana dashboards. The table shows camera,
+location, temperature, battery, last-image timestamp, numeric age and OCR
+status. Combined temperature and image-activity graphs remain below the elk
+section.
 
-```flux
-from(bucket: "Wildlife")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) =>
-    r._measurement == "wildlife_camera" and
-    r._field == "image" and
-    r._value == 1
-  )
-  |> keep(columns: ["camera"])
-  |> distinct(column: "camera")
-  |> group()
-  |> sort(columns: ["camera"])
-  |> reduce(
-    identity: {_value: ""},
-    fn: (r, accumulator) => ({
-      _value: accumulator._value + "," + r.camera
-    })
-  )
+After changing camera names or locations, regenerate the dashboard before
+importing it:
+
+```bash
+node scripts/build-public-camera-dashboard.mjs
 ```
-
-Add a row **Show** rule using `.*hc960-01.*` through `.*hc960-05.*`, and
-use `.+` for the activity row. External/public dashboards do not support
-template variables, so the collapsed rows are the intentional public fallback.
 
 ## 12. Statskog elg collector (optional)
 
