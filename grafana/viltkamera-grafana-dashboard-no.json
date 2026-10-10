@@ -316,7 +316,7 @@
       },
       "id": 35,
       "panels": [],
-      "title": "Elgjakt – Storjord Øst",
+      "title": "Elgjakt – aktivt jaktfelt",
       "type": "row"
     },
     {
@@ -378,7 +378,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "import \"date\"\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group()\n  |> sum()",
+          "query": "import \"date\"\n\nactiveJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and r._field == \"felling\")\n  |> group()\n  |> sum()",
           "refId": "A"
         }
       ],
@@ -444,7 +444,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"slaktevekt\")\n  |> group()\n  |> mean()",
+          "query": "activeJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and r._field == \"slaktevekt\")\n  |> group()\n  |> mean()",
           "refId": "A"
         }
       ],
@@ -510,7 +510,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"slaktevekt\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)",
+          "query": "activeJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and r._field == \"slaktevekt\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 1)",
           "refId": "A"
         }
       ],
@@ -576,7 +576,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group()\n  |> sum()",
+          "query": "activeJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and r._field == \"felling\")\n  |> group()\n  |> sum()",
           "refId": "A"
         }
       ],
@@ -714,7 +714,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "import \"date\"\n\nbase = from(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and (r._field == \"felling\" or r._field == \"jaktlag\"))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({r with jaktlag: if exists r.jaktlag then r.jaktlag else \"Andre\"}))\n\njaktlag1 = base\n  |> filter(fn: (r) => r.jaktlag == \"Jaktlag 1\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Jaktlag 1\"})\n\njaktlag2 = base\n  |> filter(fn: (r) => r.jaktlag == \"Jaktlag 2\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Jaktlag 2\"})\n\nandre = base\n  |> filter(fn: (r) => r.jaktlag == \"Andre\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Andre\"})\n\nunion(tables: [jaktlag1, jaktlag2, andre])\n  |> yield(name: \"Fellinger per jaktlag\")",
+          "query": "import \"date\"\n\nactiveJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nbase = from(bucket: \"Wildlife\")\n  |> range(start: date.truncate(t: now(), unit: 1y), stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and (r._field == \"felling\" or r._field == \"jaktlag\"))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({r with jaktlag: if exists r.jaktlag then r.jaktlag else \"Andre\"}))\n\njaktlag1 = base\n  |> filter(fn: (r) => r.jaktlag == \"Jaktlag 1\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Jaktlag 1\"})\n\njaktlag2 = base\n  |> filter(fn: (r) => r.jaktlag == \"Jaktlag 2\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Jaktlag 2\"})\n\nandre = base\n  |> filter(fn: (r) => r.jaktlag == \"Andre\")\n  |> keep(columns: [\"_time\", \"felling\"])\n  |> group()\n  |> sort(columns: [\"_time\"])\n  |> cumulativeSum(columns: [\"felling\"])\n  |> rename(columns: {felling: \"Andre\"})\n\nunion(tables: [jaktlag1, jaktlag2, andre])\n  |> yield(name: \"Fellinger per jaktlag\")",
           "refId": "A"
         }
       ],
@@ -780,7 +780,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"felling\", \"kategori_skutt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"kategori_skutt\"])\n  |> sum(column: \"felling\")\n  |> rename(columns: {felling: \"_value\"})\n  |> keep(columns: [\"kategori_skutt\", \"_value\"])\n  |> group()\n  |> yield(name: \"Fordeling\")",
+          "query": "activeJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and contains(value: r._field, set: [\"felling\", \"kategori_skutt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"kategori_skutt\"])\n  |> sum(column: \"felling\")\n  |> rename(columns: {felling: \"_value\"})\n  |> keep(columns: [\"kategori_skutt\", \"_value\"])\n  |> group()\n  |> yield(name: \"Fordeling\")",
           "refId": "A"
         }
       ],
@@ -872,7 +872,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and r._field == \"felling\")\n  |> group(columns: [\"jaktfelt_id\"])\n  |> aggregateWindow(every: 1y, fn: sum, createEmpty: false, timeSrc: \"_start\")\n  |> yield(name: \"Felte elg\")",
+          "query": "activeJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and r._field == \"felling\")\n  |> group(columns: [\"jaktfelt_id\"])\n  |> aggregateWindow(every: 1y, fn: sum, createEmpty: false, timeSrc: \"_start\")\n  |> yield(name: \"Felte elg\")",
           "refId": "A"
         }
       ],
@@ -938,7 +938,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"kategori_skutt\"])\n  |> mean(column: \"slaktevekt\")\n  |> rename(columns: {slaktevekt: \"_value\"})\n  |> keep(columns: [\"kategori_skutt\", \"_value\"])\n  |> group()\n  |> yield(name: \"Snittvekt\")",
+          "query": "activeJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and contains(value: r._field, set: [\"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"kategori_skutt\"])\n  |> mean(column: \"slaktevekt\")\n  |> rename(columns: {slaktevekt: \"_value\"})\n  |> keep(columns: [\"kategori_skutt\", \"_value\"])\n  |> group()\n  |> yield(name: \"Snittvekt\")",
           "refId": "A"
         }
       ],
@@ -1070,7 +1070,7 @@
             "type": "influxdb",
             "uid": "${DS_WILDLIFE}"
           },
-          "query": "from(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == \"1840J0096\" and contains(value: r._field, set: [\"felling\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)\n  |> keep(columns: [\"_time\", \"storvilt_id\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"])\n  |> yield(name: \"Siste felte dyr\")",
+          "query": "activeJaktfelt = from(bucket: \"Wildlife\")\n  |> range(start: 1970-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_config\" and r.scope == \"active\" and r._field == \"jaktfelt_id\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nfrom(bucket: \"Wildlife\")\n  |> range(start: 2019-01-01T00:00:00Z, stop: now())\n  |> filter(fn: (r) => r._measurement == \"elg_felling\" and r.jaktfelt_id == activeJaktfelt._value and contains(value: r._field, set: [\"felling\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"]))\n  |> pivot(rowKey: [\"_time\", \"storvilt_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)\n  |> keep(columns: [\"_time\", \"storvilt_id\", \"kategori\", \"kategori_skutt\", \"slaktevekt\"])\n  |> yield(name: \"Siste felte dyr\")",
           "refId": "A"
         }
       ],

@@ -210,6 +210,13 @@ Use a dedicated token with write access only to `Wildlife`. The first run
 imports the available history; later runs send only new or changed records.
 See `statskog-elg/README.md` for schema and recovery behaviour.
 
+The installer also creates `/etc/viltkamera-metadata/jaktfelt.json` and enables
+`statskog-elg-config.path`. After that, an authenticated administrator can
+change and validate the active hunting-field ID and display name at
+`kamera.8370.no`; no token is exposed to the browser. Reimport the included
+Grafana JSON once when upgrading an older installation so its elk queries read
+the dynamic `elg_config` measurement.
+
 ## 13. Acceptance test
 
 Run `scripts/validate-deployment.sh` locally on each relevant host, then test:

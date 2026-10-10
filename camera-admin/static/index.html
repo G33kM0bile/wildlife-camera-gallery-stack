@@ -8,7 +8,7 @@
     <title>Kameraoppsett · Viltkamera</title>
     <link rel="preconnect" href="https://wms.geonorge.no" crossorigin>
     <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v=1.9.4">
-    <link rel="stylesheet" href="/static/styles.css?v=1.6.0">
+    <link rel="stylesheet" href="/static/styles.css?v=1.7.0">
   </head>
   <body>
     <div id="login-view" class="login-shell" hidden>
@@ -149,6 +149,29 @@
         </aside>
       </main>
 
+      <section class="hunting-ground-panel" aria-labelledby="hunting-ground-heading">
+        <div class="hunting-ground-copy">
+          <p class="eyebrow">Statskog og Grafana</p>
+          <h2 id="hunting-ground-heading">Aktivt jaktfelt</h2>
+          <p>Endringen valideres mot Statskogs offentlige ArcGIS-data. Innsamleren og det offentlige Grafana-dashboardet følger deretter det nye feltet automatisk, mens eldre data beholdes.</p>
+          <div id="hunting-ground-status" class="hunting-ground-status" aria-live="polite"></div>
+        </div>
+        <div class="hunting-ground-form">
+          <label>
+            Jaktfelt-ID
+            <input id="hunting-ground-id" type="text" maxlength="50" autocomplete="off" spellcheck="false">
+          </label>
+          <label>
+            Jaktfeltnavn
+            <input id="hunting-ground-name" type="text" maxlength="100" autocomplete="off">
+          </label>
+          <div class="hunting-ground-actions">
+            <button id="validate-hunting-ground" class="secondary-button" type="button">Kontroller mot Statskog</button>
+            <button id="save-hunting-ground" class="primary-button" type="button" disabled>Lagre og aktiver</button>
+          </div>
+        </div>
+      </section>
+
       <footer class="footer-bar">
         <span id="revision-label">Laster konfigurasjon …</span>
         <a href="https://github.com/G33kM0bile/wildlife-camera-gallery-stack" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
@@ -159,6 +182,6 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
     <script src="/static/vendor/leaflet/leaflet.js?v=1.9.4"></script>
-    <script src="/static/app.js?v=1.3.0" defer></script>
+    <script src="/static/app.js?v=1.4.0" defer></script>
   </body>
 </html>

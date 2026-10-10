@@ -11,7 +11,24 @@ const dashboardPath = path.resolve(
 const dashboard = JSON.parse(fs.readFileSync(dashboardPath, 'utf8'));
 const datasource = { type: 'influxdb', uid: '${DS_WILDLIFE}' };
 
-const target = (query) => [{ datasource, query, refId: 'A' }];
+const activeHuntingGround = `activeJaktfelt = from(bucket: "Wildlife")
+  |> range(start: 1970-01-01T00:00:00Z, stop: now())
+  |> filter(fn: (r) => r._measurement == "elg_config" and r.scope == "active" and r._field == "jaktfelt_id")
+  |> last()
+  |> findRecord(fn: (key) => true, idx: 0)`;
+
+const withActiveHuntingGround = (query) => {
+  if (!query.includes('r.jaktfelt_id == "1840J0096"')) return query;
+  const dynamicQuery = query.replaceAll(
+    'r.jaktfelt_id == "1840J0096"',
+    'r.jaktfelt_id == activeJaktfelt._value',
+  );
+  const imports = dynamicQuery.match(/^(?:import [^\n]+\n)+\n?/);
+  if (!imports) return `${activeHuntingGround}\n\n${dynamicQuery}`;
+  return `${imports[0]}${activeHuntingGround}\n\n${dynamicQuery.slice(imports[0].length)}`;
+};
+
+const target = (query) => [{ datasource, query: withActiveHuntingGround(query), refId: 'A' }];
 
 const stat = ({ id, title, description, x, y, query, unit = 'short', noValue = '0' }) => ({
   datasource,

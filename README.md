@@ -18,7 +18,9 @@ deployment-specific material.
 - A systemd metadata watcher using ExifTool and inotify.
 - A small camera administration UI. It authenticates against the existing
   SFTPGo administrator API and edits title, subject, comment, tags, position
-  and enabled state for five camera folders.
+  and enabled state for five camera folders. It also validates and activates
+  the Statskog hunting-field ID and display name without exposing InfluxDB
+  credentials to the web application.
 - A PiGallery2 3.5.2 extension for the persistent logical album
   **Bekreftede observasjoner** (verified sightings).
 - A PiGallery2 3.5.2 map overlay that reads GPX waypoint name, description,
@@ -27,7 +29,8 @@ deployment-specific material.
   selected during import. Its public-compatible camera table automatically
   lists only cameras with image activity inside the selected time range.
 - A Statskog ArcGIS collector that imports deduplicated moose harvest records
-  for `Storjord Øst` into the existing InfluxDB bucket every ten minutes.
+  for the web-selected hunting ground into the existing InfluxDB bucket every
+  ten minutes.
 - A hardened Suntek temperature parser that tolerates missing/misread degree
   symbols and validates Celsius against the printed Fahrenheit value.
 - An MP4 validator that uses `ffprobe` after upload, quarantines corrupt video

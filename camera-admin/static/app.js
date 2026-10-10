@@ -3,6 +3,8 @@
 const state = {
   config: null,
   original: null,
+  huntingGround: null,
+  originalHuntingGround: null,
   csrf: "",
   username: "",
   selected: 0,
@@ -11,6 +13,8 @@ const state = {
   mapResizeObserver: null,
   dirty: false,
   saving: false,
+  huntingDirty: false,
+  huntingBusy: false,
 };
 
 const elements = {
@@ -29,6 +33,11 @@ const elements = {
   selectedCoordinates: document.getElementById("selected-coordinates"),
   revisionLabel: document.getElementById("revision-label"),
   usernameLabel: document.getElementById("username-label"),
+  huntingGroundId: document.getElementById("hunting-ground-id"),
+  huntingGroundName: document.getElementById("hunting-ground-name"),
+  huntingGroundStatus: document.getElementById("hunting-ground-status"),
+  validateHuntingGround: document.getElementById("validate-hunting-ground"),
+  saveHuntingGround: document.getElementById("save-hunting-ground"),
   toast: document.getElementById("toast"),
 };
 
@@ -322,8 +331,43 @@ function renderRevision() {
 function renderAll() {
   renderCameraList();
   renderRevision();
+  renderHuntingGround();
   updateSelectedBar();
   setDirty(state.dirty);
+}
+
+function huntingGroundChanged() {
+  if (!state.huntingGround || !state.originalHuntingGround) return;
+  state.huntingGround.jaktfelt_id = elements.huntingGroundId.value;
+  state.huntingGround.jaktfelt_name = elements.huntingGroundName.value;
+  state.huntingDirty =
+    state.huntingGround.jaktfelt_id !== state.originalHuntingGround.jaktfelt_id ||
+    state.huntingGround.jaktfelt_name !== state.originalHuntingGround.jaktfelt_name;
+  elements.saveHuntingGround.disabled = !state.huntingDirty || state.huntingBusy;
+  if (state.huntingDirty) {
+    elements.huntingGroundStatus.className = "hunting-ground-status pending";
+    elements.huntingGroundStatus.textContent = "Ulagrede endringer. Kontroller feltet før aktivering.";
+  } else {
+    renderHuntingGroundStatus();
+  }
+}
+
+function renderHuntingGroundStatus() {
+  const ground = state.huntingGround;
+  if (!ground) return;
+  elements.huntingGroundStatus.className = "hunting-ground-status ok";
+  const official = ground.statskog_name ? `Statskog: ${ground.statskog_name}` : "Ikke kontrollert";
+  const revision = ground.revision ? ` · Revisjon ${ground.revision}` : "";
+  elements.huntingGroundStatus.textContent = `${official}${revision}`;
+}
+
+function renderHuntingGround() {
+  if (!state.huntingGround) return;
+  elements.huntingGroundId.value = state.huntingGround.jaktfelt_id || "";
+  elements.huntingGroundName.value = state.huntingGround.jaktfelt_name || "";
+  elements.validateHuntingGround.disabled = state.huntingBusy;
+  elements.saveHuntingGround.disabled = !state.huntingDirty || state.huntingBusy;
+  renderHuntingGroundStatus();
 }
 
 function toast(message, error = false) {
@@ -339,9 +383,12 @@ async function loadConfiguration() {
     const result = await request("/api/config");
     state.config = result.config;
     state.original = clone(result.config);
+    state.huntingGround = result.hunting_ground;
+    state.originalHuntingGround = clone(result.hunting_ground);
     state.csrf = result.csrf;
     state.username = result.username;
     state.dirty = false;
+    state.huntingDirty = false;
     showApp();
   } catch (error) {
     if (error.status === 401) showLogin();
@@ -406,8 +453,71 @@ elements.resetButton.addEventListener("click", () => {
   toast("Ulagrede endringer er tilbakestilt.");
 });
 
+elements.huntingGroundId.addEventListener("input", huntingGroundChanged);
+elements.huntingGroundName.addEventListener("input", huntingGroundChanged);
+
+elements.validateHuntingGround.addEventListener("click", async () => {
+  if (state.huntingBusy) return;
+  state.huntingBusy = true;
+  elements.validateHuntingGround.disabled = true;
+  elements.saveHuntingGround.disabled = true;
+  elements.huntingGroundStatus.className = "hunting-ground-status pending";
+  elements.huntingGroundStatus.textContent = "Kontrollerer mot Statskog …";
+  try {
+    const result = await request("/api/hunting-ground/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
+      body: JSON.stringify({ jaktfelt_id: elements.huntingGroundId.value }),
+    });
+    elements.huntingGroundStatus.className = "hunting-ground-status ok";
+    elements.huntingGroundStatus.textContent =
+      `Gyldig felt: ${result.result.statskog_name} · ${result.result.art || "ukjent art"}`;
+    toast(`Statskog bekreftet ${result.result.statskog_name}.`);
+  } catch (error) {
+    elements.huntingGroundStatus.className = "hunting-ground-status error";
+    elements.huntingGroundStatus.textContent = error.message;
+    toast(error.message, true);
+  } finally {
+    state.huntingBusy = false;
+    elements.validateHuntingGround.disabled = false;
+    elements.saveHuntingGround.disabled = !state.huntingDirty;
+  }
+});
+
+elements.saveHuntingGround.addEventListener("click", async () => {
+  if (!state.huntingDirty || state.huntingBusy) return;
+  state.huntingBusy = true;
+  elements.validateHuntingGround.disabled = true;
+  elements.saveHuntingGround.disabled = true;
+  elements.huntingGroundStatus.className = "hunting-ground-status pending";
+  elements.huntingGroundStatus.textContent = "Validerer og aktiverer jaktfeltet …";
+  try {
+    const result = await request("/api/hunting-ground", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
+      body: JSON.stringify({
+        jaktfelt_id: elements.huntingGroundId.value,
+        jaktfelt_name: elements.huntingGroundName.value,
+      }),
+    });
+    state.huntingGround = result.hunting_ground;
+    state.originalHuntingGround = clone(result.hunting_ground);
+    state.huntingDirty = false;
+    renderHuntingGround();
+    toast(result.message || "Jaktfeltet er aktivert.");
+  } catch (error) {
+    elements.huntingGroundStatus.className = "hunting-ground-status error";
+    elements.huntingGroundStatus.textContent = error.message;
+    toast(error.message, true);
+  } finally {
+    state.huntingBusy = false;
+    elements.validateHuntingGround.disabled = false;
+    elements.saveHuntingGround.disabled = !state.huntingDirty;
+  }
+});
+
 elements.logoutButton.addEventListener("click", async () => {
-  if (state.dirty && !window.confirm("Du har ulagrede endringer. Vil du logge ut likevel?")) return;
+  if ((state.dirty || state.huntingDirty) && !window.confirm("Du har ulagrede endringer. Vil du logge ut likevel?")) return;
   try {
     await request("/api/logout", { method: "POST", headers: { "X-CSRF-Token": state.csrf } });
   } catch (_) {
@@ -415,6 +525,8 @@ elements.logoutButton.addEventListener("click", async () => {
   }
   state.config = null;
   state.original = null;
+  state.huntingGround = null;
+  state.originalHuntingGround = null;
   state.csrf = "";
   showLogin();
 });
@@ -426,7 +538,7 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("beforeunload", (event) => {
-  if (!state.dirty) return;
+  if (!state.dirty && !state.huntingDirty) return;
   event.preventDefault();
   event.returnValue = "";
 });

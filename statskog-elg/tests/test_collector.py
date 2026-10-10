@@ -1,4 +1,6 @@
 import importlib.util
+import json
+import os
 import sys
 import tempfile
 import unittest
@@ -76,6 +78,35 @@ class CollectorTests(unittest.TestCase):
         self.assertIn('jaktperiode_start="2024-09-25"', line)
         self.assertTrue(line.endswith(" 1730937600000000000"))
 
+    def test_active_config_line_contains_safe_dynamic_values(self):
+        line = collector.build_active_config_line(config(), timestamp_ns=123)
+        self.assertEqual(
+            'elg_config,scope=active jaktfelt_id="1840J0096",jaktfelt_name="Storjord Øst" 123',
+            line,
+        )
+
+    def test_json_hunting_ground_overrides_env_defaults(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "jaktfelt.json"
+            path.write_text(
+                json.dumps(
+                    {"jaktfelt_id": "9999J0001", "jaktfelt_name": "Nytt felt"},
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            environment = {
+                "INFLUX_URL": "http://influx.invalid:8086",
+                "INFLUX_TOKEN": "secret",
+                "JAKTFELT_ID": "old",
+                "JAKTFELT_NAME": "Old field",
+                "JAKTFELT_CONFIG": str(path),
+            }
+            with mock.patch.dict(os.environ, environment, clear=True):
+                result = collector.Config.from_env()
+            self.assertEqual("9999J0001", result.jaktfelt_id)
+            self.assertEqual("Nytt felt", result.jaktfelt_name)
+
     def test_zero_weight_is_preserved_but_not_numeric(self):
         row = {
             "StorviltID": 45353,
@@ -150,8 +181,19 @@ class CollectorTests(unittest.TestCase):
             rows = {"1": {"StorviltID": 1, "Dato": 1000}}
             collector.save_state(path, rows)
             state = collector.load_state(path)
-            self.assertEqual(1, state["version"])
+            self.assertEqual(2, state["version"])
             self.assertEqual(1000, state["events"]["1"]["timestamp_ms"])
+
+    def test_state_tracks_active_hunting_ground(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "state.json"
+            collector.save_state(path, {}, config())
+            state = collector.load_state(path)
+            self.assertEqual("1840J0096", state["active_config"]["jaktfelt_id"])
+            self.assertEqual(
+                collector.active_config_fingerprint(config()),
+                state["active_config"]["fingerprint"],
+            )
 
     def test_influx_write_uses_scoped_endpoint_and_token(self):
         response = mock.MagicMock()

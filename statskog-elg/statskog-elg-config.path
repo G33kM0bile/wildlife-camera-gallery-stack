@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Statskog collector when the active hunting ground changes
+After=statskog-elg.service
+
+[Path]
+PathChanged=/etc/viltkamera-metadata/jaktfelt.json
+Unit=statskog-elg.service
+
+[Install]
+WantedBy=multi-user.target

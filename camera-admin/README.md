@@ -3,6 +3,10 @@
 Norwegian-language web UI for the five folders `hc960-01` through `hc960-05`.
 It edits camera position, location, title, subject, comment, tags and enabled
 state. Authentication is delegated to the existing SFTPGo administrator API.
+The authenticated editor also manages the active Statskog hunting-field ID and
+display name. IDs are checked against the public ArcGIS layer before saving;
+the browser never receives the InfluxDB token. The safe shared configuration is
+`/etc/viltkamera-metadata/jaktfelt.json`.
 The placement map uses Kartverket's public topographic WMS as its background
 layer; no map API key is stored by this component.
 The unauthenticated login view also acts as a small service portal with links
@@ -24,4 +28,7 @@ sudo ../scripts/install-metadata-stack.sh
 ```
 
 The default listener is `127.0.0.1:9095`. Existing production configuration is
-preserved during reinstall. Changes apply only to new uploads.
+preserved during reinstall. Camera metadata changes apply only to new uploads.
+Hunting-ground changes start
+the Statskog collector through `statskog-elg-config.path` and affect subsequent
+dashboard filtering while preserving historical records.

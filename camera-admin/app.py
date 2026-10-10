@@ -15,13 +15,14 @@ import math
 import mimetypes
 import os
 from pathlib import Path
+import re
 import secrets
 import tempfile
 import threading
 import time
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -33,6 +34,17 @@ CONFIG_PATH = Path(
 HISTORY_DIR = Path(
     os.environ.get("CAMERA_ADMIN_HISTORY", "/etc/viltkamera-metadata/history")
 )
+HUNTING_CONFIG_PATH = Path(
+    os.environ.get(
+        "CAMERA_ADMIN_HUNTING_CONFIG", "/etc/viltkamera-metadata/jaktfelt.json"
+    )
+)
+STATSKOG_ARCGIS_URL = os.environ.get(
+    "STATSKOG_ARCGIS_URL",
+    "https://kartportal.statskog.no/server/rest/services/"
+    "Storvilt_2024/Storvilt_app_innsyn/MapServer",
+).rstrip("/")
+STATSKOG_JAKTFELT_LAYER = int(os.environ.get("STATSKOG_JAKTFELT_LAYER", "4"))
 SFTPGO_API_URL = os.environ.get("SFTPGO_API_URL", "http://127.0.0.1:8080").rstrip("/")
 BIND_ADDRESS = os.environ.get("CAMERA_ADMIN_BIND", "127.0.0.1")
 PORT = int(os.environ.get("CAMERA_ADMIN_PORT", "9095"))
@@ -42,6 +54,7 @@ MAX_BODY = 64 * 1024
 EXPECTED_IDS = tuple(f"hc960-{number:02d}" for number in range(1, 6))
 
 CONFIG_LOCK = threading.RLock()
+HUNTING_CONFIG_LOCK = threading.RLock()
 SESSION_LOCK = threading.RLock()
 SESSIONS: dict[str, dict[str, Any]] = {}
 LOGIN_FAILURES: dict[str, list[float]] = {}
@@ -70,6 +83,104 @@ def load_config() -> dict[str, Any]:
             ["viltkamera", camera.get("id", ""), camera.get("location", "")],
         )
     return config
+
+
+def default_hunting_ground() -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "revision": 0,
+        "updated_at": "",
+        "jaktfelt_id": "1840J0096",
+        "jaktfelt_name": "Storjord Øst",
+        "statskog_name": "Storjord Øst",
+        "statskog_unique_id": 2202,
+    }
+
+
+def load_hunting_ground() -> dict[str, Any]:
+    if not HUNTING_CONFIG_PATH.exists():
+        return default_hunting_ground()
+    with HUNTING_CONFIG_PATH.open("r", encoding="utf-8") as handle:
+        config = json.load(handle)
+    if config.get("schema_version") != 1:
+        raise ValueError("Jaktfeltkonfigurasjonen har et ukjent format")
+    return validate_hunting_ground(config, current=config, increment_revision=False)
+
+
+def clean_hunting_field_id(value: Any) -> str:
+    field_id = clean_text(value, "Jaktfelt-ID", 50)
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", field_id):
+        raise ValueError("Jaktfelt-ID kan bare inneholde bokstaver, tall, bindestrek og understrek")
+    return field_id
+
+
+def validate_hunting_ground(
+    payload: Any,
+    current: dict[str, Any] | None = None,
+    *,
+    increment_revision: bool = True,
+) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError("Ugyldig jaktfeltkonfigurasjon")
+    current = current or default_hunting_ground()
+    revision = int(current.get("revision", 0)) + (1 if increment_revision else 0)
+    unique_id = payload.get("statskog_unique_id")
+    if unique_id is not None and (isinstance(unique_id, bool) or not isinstance(unique_id, int)):
+        raise ValueError("Statskogs interne felt-ID er ugyldig")
+    return {
+        "schema_version": 1,
+        "revision": revision,
+        "updated_at": iso_utc() if increment_revision else str(payload.get("updated_at", "")),
+        "jaktfelt_id": clean_hunting_field_id(payload.get("jaktfelt_id")),
+        "jaktfelt_name": clean_text(payload.get("jaktfelt_name"), "Jaktfeltnavn", 100),
+        "statskog_name": clean_optional_text(
+            payload.get("statskog_name", ""), "Statskog-navn", 100
+        ),
+        "statskog_unique_id": unique_id,
+    }
+
+
+def lookup_hunting_ground(jaktfelt_id: Any) -> dict[str, Any]:
+    field_id = clean_hunting_field_id(jaktfelt_id)
+    escaped = field_id.replace("'", "''")
+    params = {
+        "f": "json",
+        "where": f"JaktfeltID = '{escaped}'",
+        "outFields": "JaktfeltUnikID,JaktfeltID,Feltnavn,Art",
+        "returnGeometry": "false",
+    }
+    request = Request(
+        f"{STATSKOG_ARCGIS_URL}/{STATSKOG_JAKTFELT_LAYER}/query?{urlencode(params)}",
+        headers={"Accept": "application/json", "User-Agent": "viltkamera-camera-admin/1.0"},
+    )
+    try:
+        with urlopen(request, timeout=12) as response:
+            payload = json.load(response)
+    except HTTPError as error:
+        raise ConnectionError(f"Statskog returnerte HTTP {error.code}") from error
+    except (URLError, TimeoutError, json.JSONDecodeError) as error:
+        raise ConnectionError("Kunne ikke kontakte Statskog") from error
+    if not isinstance(payload, dict) or payload.get("error"):
+        raise ConnectionError("Statskog returnerte et ugyldig svar")
+    features = payload.get("features", [])
+    rows = [
+        feature.get("attributes")
+        for feature in features
+        if isinstance(feature, dict) and isinstance(feature.get("attributes"), dict)
+    ]
+    exact = [row for row in rows if str(row.get("JaktfeltID", "")) == field_id]
+    if len(exact) != 1:
+        raise ValueError(f"Fant ikke ett entydig jaktfelt med ID {field_id} hos Statskog")
+    row = exact[0]
+    unique_id = row.get("JaktfeltUnikID")
+    if isinstance(unique_id, bool) or not isinstance(unique_id, int):
+        raise ValueError("Statskog returnerte en ugyldig intern felt-ID")
+    return {
+        "jaktfelt_id": field_id,
+        "statskog_name": clean_text(row.get("Feltnavn"), "Statskog-navn", 100),
+        "statskog_unique_id": unique_id,
+        "art": clean_optional_text(row.get("Art", ""), "Art", 50),
+    }
 
 
 def clean_text(value: Any, label: str, maximum: int) -> str:
@@ -250,6 +361,28 @@ def save_config(payload: Any) -> dict[str, Any]:
         return updated
 
 
+def save_hunting_ground(payload: Any) -> dict[str, Any]:
+    with HUNTING_CONFIG_LOCK:
+        current = load_hunting_ground()
+        cleaned = validate_hunting_ground(payload, current=current)
+        lookup = lookup_hunting_ground(cleaned["jaktfelt_id"])
+        cleaned["statskog_name"] = lookup["statskog_name"]
+        cleaned["statskog_unique_id"] = lookup["statskog_unique_id"]
+
+        HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+        if HUNTING_CONFIG_PATH.exists():
+            history_name = (
+                f"jaktfelt-r{int(current.get('revision', 0)):04d}-"
+                f"{utc_now().strftime('%Y%m%dT%H%M%SZ')}.json"
+            )
+            write_json_atomic(HISTORY_DIR / history_name, current)
+        write_json_atomic(HUNTING_CONFIG_PATH, cleaned)
+        history_files = sorted(HISTORY_DIR.glob("jaktfelt-r*.json"), reverse=True)
+        for old_file in history_files[20:]:
+            old_file.unlink(missing_ok=True)
+        return cleaned
+
+
 def authenticate_admin(username: str, password: str) -> datetime:
     credentials = b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
     request = Request(
@@ -401,12 +534,18 @@ class CameraAdminHandler(BaseHTTPRequestHandler):
             _, session = authenticated
             try:
                 config = load_config()
+                hunting_ground = load_hunting_ground()
             except (OSError, ValueError, json.JSONDecodeError):
                 self.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, "Kunne ikke lese konfigurasjonen")
                 return
             self.send_json(
                 HTTPStatus.OK,
-                {"config": config, "csrf": session["csrf"], "username": session["username"]},
+                {
+                    "config": config,
+                    "hunting_ground": hunting_ground,
+                    "csrf": session["csrf"],
+                    "username": session["username"],
+                },
             )
             return
         if path == "/":
@@ -448,6 +587,12 @@ class CameraAdminHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/config":
             self.handle_save()
+            return
+        if path == "/api/hunting-ground/validate":
+            self.handle_hunting_ground_validate()
+            return
+        if path == "/api/hunting-ground":
+            self.handle_hunting_ground_save()
             return
         self.send_error_json(HTTPStatus.NOT_FOUND, "Ikke funnet")
 
@@ -523,6 +668,56 @@ class CameraAdminHandler(BaseHTTPRequestHandler):
             self.send_error_json(HTTPStatus.INTERNAL_SERVER_ERROR, "Kunne ikke lagre konfigurasjonen")
             return
         self.send_json(HTTPStatus.OK, {"ok": True, "config": updated})
+
+    def handle_hunting_ground_validate(self) -> None:
+        authenticated = self.require_session()
+        if not authenticated:
+            return
+        _, session = authenticated
+        if not self.csrf_matches(session):
+            self.send_error_json(HTTPStatus.FORBIDDEN, "Ugyldig sikkerhetstoken")
+            return
+        try:
+            payload = json.loads(self.read_body().decode("utf-8"))
+            result = lookup_hunting_ground(payload.get("jaktfelt_id"))
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            self.send_error_json(HTTPStatus.BAD_REQUEST, str(error))
+            return
+        except ConnectionError as error:
+            self.send_error_json(HTTPStatus.BAD_GATEWAY, str(error))
+            return
+        self.send_json(HTTPStatus.OK, {"ok": True, "result": result})
+
+    def handle_hunting_ground_save(self) -> None:
+        authenticated = self.require_session()
+        if not authenticated:
+            return
+        _, session = authenticated
+        if not self.csrf_matches(session):
+            self.send_error_json(HTTPStatus.FORBIDDEN, "Ugyldig sikkerhetstoken")
+            return
+        try:
+            payload = json.loads(self.read_body().decode("utf-8"))
+            updated = save_hunting_ground(payload)
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            self.send_error_json(HTTPStatus.BAD_REQUEST, str(error))
+            return
+        except ConnectionError as error:
+            self.send_error_json(HTTPStatus.BAD_GATEWAY, str(error))
+            return
+        except OSError:
+            self.send_error_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR, "Kunne ikke lagre jaktfeltkonfigurasjonen"
+            )
+            return
+        self.send_json(
+            HTTPStatus.OK,
+            {
+                "ok": True,
+                "hunting_ground": updated,
+                "message": "Jaktfeltet er lagret. Innsamleren oppdateres automatisk.",
+            },
+        )
 
 
 def run() -> None:

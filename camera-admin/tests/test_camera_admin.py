@@ -101,6 +101,40 @@ class CameraAdminTests(unittest.TestCase):
         self.assertTrue(request.headers["Authorization"].startswith("Basic "))
         self.assertGreater(expiry.timestamp(), 0)
 
+    def test_hunting_ground_input_is_sanitized(self):
+        updated = app.validate_hunting_ground(
+            {"jaktfelt_id": " 1840J0096 ", "jaktfelt_name": "  Storjord   Øst "}
+        )
+        self.assertEqual("1840J0096", updated["jaktfelt_id"])
+        self.assertEqual("Storjord Øst", updated["jaktfelt_name"])
+        with self.assertRaisesRegex(ValueError, "Jaktfelt-ID"):
+            app.validate_hunting_ground(
+                {"jaktfelt_id": "1840J0096'", "jaktfelt_name": "Storjord Øst"}
+            )
+
+    @patch("app.urlopen")
+    def test_hunting_ground_lookup_uses_public_arcgis(self, mocked_urlopen):
+        mocked_urlopen.return_value = FakeResponse(
+            {
+                "features": [
+                    {
+                        "attributes": {
+                            "JaktfeltUnikID": 2202,
+                            "JaktfeltID": "1840J0096",
+                            "Feltnavn": "Storjord Øst",
+                            "Art": "Elg",
+                        }
+                    }
+                ]
+            }
+        )
+        result = app.lookup_hunting_ground("1840J0096")
+        self.assertEqual("Storjord Øst", result["statskog_name"])
+        self.assertEqual(2202, result["statskog_unique_id"])
+        request = mocked_urlopen.call_args.args[0]
+        self.assertIn("/4/query?", request.full_url)
+        self.assertIn("JaktfeltID", request.full_url)
+
 
 class MetadataTaggerTests(unittest.TestCase):
     @classmethod

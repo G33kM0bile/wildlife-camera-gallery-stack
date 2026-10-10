@@ -1,7 +1,7 @@
 # Statskog elg collector
 
-This component imports public Statskog ArcGIS harvest records for one hunting
-field into an existing InfluxDB v2 bucket. The production defaults target:
+This component imports public Statskog ArcGIS harvest records for one active
+hunting field into an existing InfluxDB v2 bucket. The initial defaults target:
 
 - hunting field `1840J0096` / `Storjord Øst`
 - species `Elg`
@@ -38,6 +38,19 @@ start/end dates from the public hunting-period layer. Periods are labelled by
 start date as `Jaktlag 1`, `Jaktlag 2`, and `Andre`; leader names and phone
 numbers are neither requested nor stored. Event dates are matched in
 `Europe/Oslo`, including both the first and last day of each period.
+
+## Web-editable active hunting ground
+
+`/etc/viltkamera-metadata/jaktfelt.json` is the non-secret source of truth for
+`jaktfelt_id` and `jaktfelt_name`. The authenticated camera administration UI
+validates a proposed ID against Statskog before saving. The
+`statskog-elg-config.path` unit starts this collector immediately after the
+atomic file update; the normal ten-minute timer remains as a fallback.
+
+The collector writes the active selection to the `elg_config` measurement only
+when it changes. Public-compatible Grafana queries read its latest
+`jaktfelt_id`, so changing ground does not require a dashboard variable or
+manual JSON edit. Existing `elg_felling` points keep their original field ID.
 
 ## Install on the host that can reach InfluxDB
 
@@ -112,7 +125,7 @@ The Influx timestamp is Statskog's `Dato` value. Grafana should display it in
 
 ## Grafana
 
-The Norwegian dashboard JSON includes an **Elgjakt – Storjord Øst** section.
+The Norwegian dashboard JSON includes an **Elgjakt – aktivt jaktfelt** section.
 Standalone Flux queries are also under [`flux/`](flux/) for inspection and
 reuse. Quota and remaining quota are not included because the verified ArcGIS
 layers do not expose a stable quota field.

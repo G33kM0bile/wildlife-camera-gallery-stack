@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,6 +27,7 @@ DEFAULT_ARCGIS_URL = (
     "Storvilt_2024/Storvilt_app_innsyn/MapServer"
 )
 MEASUREMENT = "elg_felling"
+CONFIG_MEASUREMENT = "elg_config"
 SOURCE_FIELDS = (
     "Art,Kategori,Kategoriskutt,Dato,Dato_Tekst,Slaktevekt,"
     "Kontrollert_vekt,JaktfeltID,StorviltID,HjorteviltID,GlobalID,"
@@ -75,13 +77,30 @@ class Config:
                 "Mangler påkrevd konfigurasjon: " + ", ".join(missing)
             )
 
+        jaktfelt_id = env("JAKTFELT_ID", "1840J0096")
+        jaktfelt_name = env("JAKTFELT_NAME", "Storjord Øst")
+        hunting_config_path = env("JAKTFELT_CONFIG")
+        if hunting_config_path:
+            try:
+                hunting_config = json.loads(
+                    Path(hunting_config_path).read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError) as exc:
+                raise CollectorError(
+                    f"Kunne ikke lese JAKTFELT_CONFIG {hunting_config_path}: {exc}"
+                ) from exc
+            if not isinstance(hunting_config, dict):
+                raise CollectorError("JAKTFELT_CONFIG må inneholde et JSON-objekt")
+            jaktfelt_id = str(hunting_config.get("jaktfelt_id", "")).strip()
+            jaktfelt_name = str(hunting_config.get("jaktfelt_name", "")).strip()
+
         config = cls(
             arcgis_url=env("STATSKOG_ARCGIS_URL", DEFAULT_ARCGIS_URL).rstrip("/"),
             arcgis_layer=int(env("STATSKOG_LAYER", "0")),
             jaktfelt_lookup_layer=int(env("STATSKOG_JAKTFELT_LAYER", "4")),
             jaktlag_period_layer=int(env("STATSKOG_JAKTLAG_LAYER", "8")),
-            jaktfelt_id=env("JAKTFELT_ID", "1840J0096"),
-            jaktfelt_name=env("JAKTFELT_NAME", "Storjord Øst"),
+            jaktfelt_id=jaktfelt_id,
+            jaktfelt_name=jaktfelt_name,
             art=env("ART", "Elg"),
             influx_url=influx_url.rstrip("/"),
             influx_token=influx_token,
@@ -95,8 +114,8 @@ class Config:
             batch_size=int(env("INFLUX_BATCH_SIZE", "500")),
             local_timezone=env("LOCAL_TIMEZONE", "Europe/Oslo"),
         )
-        if not config.jaktfelt_id or not config.art:
-            raise CollectorError("JAKTFELT_ID og ART kan ikke være tomme")
+        if not config.jaktfelt_id or not config.jaktfelt_name or not config.art:
+            raise CollectorError("JAKTFELT_ID, JAKTFELT_NAME og ART kan ikke være tomme")
         if config.timeout_seconds < 1 or config.page_size < 1 or config.batch_size < 1:
             raise CollectorError("Timeout, sidestørrelse og batchstørrelse må være positive")
         _require_http_url(config.arcgis_url, "STATSKOG_ARCGIS_URL")
@@ -461,6 +480,30 @@ def build_line(event_id: str, event: dict[str, Any], config: Config) -> str:
     return f"{_escape_measurement(MEASUREMENT)},{tag_text} {field_text} {timestamp_ns}"
 
 
+def active_config_fingerprint(config: Config) -> str:
+    value = json.dumps(
+        {"jaktfelt_id": config.jaktfelt_id, "jaktfelt_name": config.jaktfelt_name},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(value).hexdigest()
+
+
+def build_active_config_line(config: Config, timestamp_ns: int | None = None) -> str:
+    fields = {
+        "jaktfelt_id": _field_string(config.jaktfelt_id),
+        "jaktfelt_name": _field_string(config.jaktfelt_name),
+    }
+    field_text = ",".join(
+        f"{_escape_key(key)}={value}" for key, value in sorted(fields.items())
+    )
+    return (
+        f"{_escape_measurement(CONFIG_MEASUREMENT)},scope=active {field_text} "
+        f"{timestamp_ns if timestamp_ns is not None else time.time_ns()}"
+    )
+
+
 def load_state(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {"version": 1, "events": {}}
@@ -473,7 +516,11 @@ def load_state(path: Path) -> dict[str, Any]:
     return data
 
 
-def save_state(path: Path, events: dict[str, dict[str, Any]]) -> None:
+def save_state(
+    path: Path,
+    events: dict[str, dict[str, Any]],
+    config: Config | None = None,
+) -> None:
     state_events = {
         event_id: {
             "fingerprint": event_fingerprint(event),
@@ -481,7 +528,13 @@ def save_state(path: Path, events: dict[str, dict[str, Any]]) -> None:
         }
         for event_id, event in sorted(events.items())
     }
-    payload = {"version": 1, "events": state_events}
+    payload: dict[str, Any] = {"version": 2, "events": state_events}
+    if config is not None:
+        payload["active_config"] = {
+            "fingerprint": active_config_fingerprint(config),
+            "jaktfelt_id": config.jaktfelt_id,
+            "jaktfelt_name": config.jaktfelt_name,
+        }
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with tempfile.NamedTemporaryFile(
@@ -628,7 +681,13 @@ def run(argv: list[str]) -> int:
 
     state = load_state(config.state_file)
     pending = changed_events(unique, state, force=args.force)
-    lines = [build_line(event_id, event, config) for event_id, event in pending.items()]
+    config_changed = (
+        args.force
+        or state.get("active_config", {}).get("fingerprint")
+        != active_config_fingerprint(config)
+    )
+    event_lines = [build_line(event_id, event, config) for event_id, event in pending.items()]
+    lines = ([build_active_config_line(config)] if config_changed else []) + event_lines
 
     if args.dry_run:
         if lines:
@@ -638,10 +697,14 @@ def run(argv: list[str]) -> int:
 
     if lines:
         write_influx(lines, config)
-        LOG.info("Skrev %d nye eller endrede fellinger til InfluxDB", len(lines))
+        LOG.info(
+            "Skrev %d konfigurasjonspunkt og %d nye eller endrede fellinger til InfluxDB",
+            1 if config_changed else 0,
+            len(event_lines),
+        )
     else:
         LOG.info("Ingen nye eller endrede fellinger")
-    save_state(config.state_file, unique)
+    save_state(config.state_file, unique, config)
     return 0
 
 

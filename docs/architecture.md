@@ -78,10 +78,17 @@ writes temperature fields. The dashboard also limits displayed temperature to
 ### Statskog harvest collector
 
 The optional `statskog-elg` oneshot service polls Statskog's public ArcGIS
-layer for `Art='Elg'` and `JaktfeltID='1840J0096'`. A systemd timer runs it
+layer for `Art='Elg'` and the hunting field selected in the camera-admin UI. A systemd timer runs it
 every ten minutes. It deduplicates source revisions by `StorviltID`, records
 source `Dato` as the Influx timestamp and writes measurement `elg_felling` to
 the existing `Wildlife` bucket.
+
+The non-secret active selection is stored in
+`/etc/viltkamera-metadata/jaktfelt.json`. A systemd path unit starts the
+collector immediately after a change. The collector publishes the active ID
+and name as measurement `elg_config`; Grafana resolves that record before
+filtering harvest panels. Historical points retain their original
+`jaktfelt_id`.
 
 The collector keeps fingerprints in `/var/lib/statskog-elg/state.json`, so
 unchanged events are not transmitted repeatedly. It never requests geometry

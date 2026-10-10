@@ -1,5 +1,5 @@
 [Unit]
-Description=Statskog elg collector for Storjord Øst
+Description=Statskog elg collector for the active hunting ground
 Wants=network-online.target
 After=network-online.target
 
@@ -8,6 +8,7 @@ Type=oneshot
 User=statskog-elg
 Group=statskog-elg
 EnvironmentFile=/etc/statskog-elg/statskog-elg.env
+Environment=JAKTFELT_CONFIG=/etc/viltkamera-metadata/jaktfelt.json
 ExecStart=/opt/statskog-elg/collector.py
 StateDirectory=statskog-elg
 StateDirectoryMode=0750
