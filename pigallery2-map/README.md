@@ -3,8 +3,9 @@
 This overlay targets PiGallery2 3.5.2 at commit
 `ed21d7f94bb346b5ba98e846bd71cd59782b453a`.
 
-`build.sh` clones that exact revision, overlays two frontend files, builds all
-locales, and creates `viltkamera/pigallery2:3.5.2-map-waypoints`. The final image
+`build.sh` clones that exact revision, overlays the map files and the branded
+SSO login button, builds all locales, and creates
+`viltkamera/pigallery2:3.5.2-map-waypoints`. The final image
 uses the same PiGallery2 3.5.2 manifest digest captured by the reference
 deployment.
 

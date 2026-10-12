@@ -103,3 +103,11 @@ visible below the Rauthy button.
 
 Because local users and credentials are never removed, rollback does not
 require password resets.
+
+## Login-button branding
+
+The reference deployment labels the SSO action `Login med MinSin SSO` in all
+three services. Camera setup keeps the label in `static/index.html`, and the
+PiGallery2 build overlay replaces its upstream `Login with <provider>` label.
+SFTPGo reads `login.signin_openid` from its English translation file; package
+upgrades can replace that file, so verify the label after every SFTPGo update.
