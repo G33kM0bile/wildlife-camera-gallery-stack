@@ -3,6 +3,9 @@
 Norwegian-language web UI for the five folders `hc960-01` through `hc960-05`.
 It edits camera position, location, title, subject, comment, tags and enabled
 state. Authentication is delegated to the existing SFTPGo administrator API.
+Optional Rauthy OIDC login runs in parallel with that existing password path;
+see [`../docs/sso-rauthy.md`](../docs/sso-rauthy.md). OIDC administrators must
+also be listed explicitly in `CAMERA_ADMIN_OIDC_ALLOWED_USERS`.
 The authenticated editor also manages the active Statskog hunting-field ID and
 display name. IDs are checked against the public ArcGIS layer before saving;
 the browser never receives the InfluxDB token. The safe shared configuration is

@@ -14,6 +14,7 @@ Environment=CAMERA_ADMIN_PORT=9095
 Environment=CAMERA_ADMIN_CONFIG=/etc/viltkamera-metadata/cameras.json
 Environment=CAMERA_ADMIN_HISTORY=/etc/viltkamera-metadata/history
 Environment=SFTPGO_API_URL=http://127.0.0.1:8080
+EnvironmentFile=-/etc/viltkamera-camera-admin/oidc.env
 ExecStart=/usr/bin/python3 -B /opt/viltkamera-camera-admin/app.py
 Restart=on-failure
 RestartSec=3
@@ -32,6 +33,7 @@ MemoryDenyWriteExecute=yes
 RestrictSUIDSGID=yes
 RestrictRealtime=yes
 RestrictAddressFamilies=AF_INET AF_INET6
+ReadOnlyPaths=/etc/viltkamera-camera-admin
 ReadWritePaths=/etc/viltkamera-metadata
 
 [Install]

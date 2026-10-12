@@ -78,6 +78,9 @@ The admin UI defaults to `127.0.0.1:9095`. Change its systemd environment only
 if a trusted LAN or reverse proxy must reach it, then run `systemctl
 daemon-reload` and restart the service.
 
+To add Rauthy without removing the existing logins, follow
+[sso-rauthy.md](sso-rauthy.md). Configure and test one service at a time.
+
 ## 4. Install MP4 validation
 
 The video validator requires the existing wildlife OCR virtual environment and

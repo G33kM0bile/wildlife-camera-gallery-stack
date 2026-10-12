@@ -66,6 +66,9 @@ flowchart LR
 See [docs/architecture.md](docs/architecture.md) for the data flow and trust
 boundaries.
 
+For optional centralized login with local-password fallback, see
+[docs/sso-rauthy.md](docs/sso-rauthy.md).
+
 ## Known-compatible versions
 
 The captured deployment used:

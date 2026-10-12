@@ -6,8 +6,10 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -76,7 +78,7 @@ class CameraAdminTests(unittest.TestCase):
             app.validate_config(payload, self.config)
 
     def test_atomic_json_write(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=PROJECT_DIR) as directory:
             path = Path(directory) / "cameras.json"
             app.write_json_atomic(path, self.config)
             with path.open(encoding="utf-8") as handle:
@@ -100,6 +102,70 @@ class CameraAdminTests(unittest.TestCase):
         self.assertTrue(request.full_url.endswith("/api/v2/token"))
         self.assertTrue(request.headers["Authorization"].startswith("Basic "))
         self.assertGreater(expiry.timestamp(), 0)
+
+    def test_oidc_login_uses_authorization_code_pkce(self):
+        with tempfile.TemporaryDirectory(dir=PROJECT_DIR) as directory:
+            secret_file = Path(directory) / "client-secret"
+            secret_file.write_text("secret\n", encoding="utf-8")
+            discovery = {
+                "issuer": "https://auth.example.test/auth/v1/",
+                "authorization_endpoint": "https://auth.example.test/authorize",
+                "token_endpoint": "https://auth.example.test/token",
+                "userinfo_endpoint": "https://auth.example.test/userinfo",
+            }
+            with (
+                patch.object(app, "OIDC_ISSUER", "https://auth.example.test/auth/v1"),
+                patch.object(app, "OIDC_CLIENT_ID", "kamera"),
+                patch.object(app, "OIDC_CLIENT_SECRET_FILE", secret_file),
+                patch.object(app, "OIDC_REDIRECT_URI", "https://kamera.example.test/auth/oidc/callback"),
+                patch.object(app, "OIDC_ALLOWED_USERS", frozenset({"ola"})),
+                patch.object(app, "OIDC_DISCOVERY", discovery),
+            ):
+                app.OIDC_REQUESTS.clear()
+                login_url = app.oidc_login_url()
+        query = parse_qs(urlparse(login_url).query)
+        self.assertEqual(query["response_type"], ["code"])
+        self.assertEqual(query["code_challenge_method"], ["S256"])
+        self.assertEqual(query["client_id"], ["kamera"])
+        self.assertIn(query["state"][0], app.OIDC_REQUESTS)
+
+    @patch("app.urlopen")
+    def test_oidc_callback_uses_userinfo_and_allowlist(self, mocked_urlopen):
+        mocked_urlopen.side_effect = [
+            FakeResponse({"access_token": "access", "expires_in": 900}),
+            FakeResponse({"sub": "stable-id", "preferred_username": "Ola"}),
+        ]
+        with tempfile.TemporaryDirectory(dir=PROJECT_DIR) as directory:
+            secret_file = Path(directory) / "client-secret"
+            secret_file.write_text("secret\n", encoding="utf-8")
+            discovery = {
+                "issuer": "https://auth.example.test/auth/v1/",
+                "authorization_endpoint": "https://auth.example.test/authorize",
+                "token_endpoint": "https://auth.example.test/token",
+                "userinfo_endpoint": "https://auth.example.test/userinfo",
+            }
+            with (
+                patch.object(app, "OIDC_CLIENT_ID", "kamera"),
+                patch.object(app, "OIDC_CLIENT_SECRET_FILE", secret_file),
+                patch.object(app, "OIDC_REDIRECT_URI", "https://kamera.example.test/auth/oidc/callback"),
+                patch.object(app, "OIDC_ALLOWED_USERS", frozenset({"ola"})),
+                patch.object(app, "OIDC_DISCOVERY", discovery),
+            ):
+                app.OIDC_REQUESTS.clear()
+                app.OIDC_REQUESTS["state"] = {
+                    "verifier": "verifier",
+                    "nonce": "nonce",
+                    "expires": time.time() + 60,
+                }
+                username, expiry = app.authenticate_oidc_callback(
+                    {"state": ["state"], "code": ["code"]}
+                )
+        self.assertEqual(username, "Ola")
+        self.assertGreater(expiry.timestamp(), time.time())
+        token_request = mocked_urlopen.call_args_list[0].args[0]
+        self.assertIn(b"code_verifier=verifier", token_request.data)
+        user_request = mocked_urlopen.call_args_list[1].args[0]
+        self.assertEqual(user_request.headers["Authorization"], "Bearer access")
 
     def test_hunting_ground_input_is_sanitized(self):
         updated = app.validate_hunting_ground(

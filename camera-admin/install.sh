@@ -7,6 +7,7 @@ readonly CONFIG_DIR=/etc/viltkamera-metadata
 readonly CONFIG_FILE=$CONFIG_DIR/cameras.json
 readonly CONFIG_GROUP=viltkamera-config
 readonly APP_USER=viltkamera-admin
+readonly OIDC_CONFIG_DIR=/etc/viltkamera-camera-admin
 
 for required in app.py viltkamera-metadata.py viltkamera-camera-admin.service config/cameras.json static/index.html static/styles.css static/app.js static/vendor/leaflet/leaflet.css static/vendor/leaflet/leaflet.js; do
   test -f "$SOURCE_DIR/$required"
@@ -23,6 +24,10 @@ fi
 usermod --append --groups "$CONFIG_GROUP" sftpgo
 
 install -d -o root -g root -m 0755 "$APP_DIR" "$APP_DIR/static" "$APP_DIR/static/vendor" "$APP_DIR/static/vendor/leaflet" "$APP_DIR/static/vendor/leaflet/images"
+install -d -o root -g "$CONFIG_GROUP" -m 0750 "$OIDC_CONFIG_DIR"
+if [[ ! -e "$OIDC_CONFIG_DIR/oidc.env" ]]; then
+  install -o root -g "$CONFIG_GROUP" -m 0640 "$SOURCE_DIR/oidc.env.example" "$OIDC_CONFIG_DIR/oidc.env"
+fi
 install -o root -g root -m 0644 "$SOURCE_DIR/app.py" "$APP_DIR/app.py"
 install -o root -g root -m 0644 "$SOURCE_DIR/static/index.html" "$APP_DIR/static/index.html"
 install -o root -g root -m 0644 "$SOURCE_DIR/static/styles.css" "$APP_DIR/static/styles.css"

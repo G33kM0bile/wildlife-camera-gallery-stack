@@ -22,6 +22,8 @@ const elements = {
   appView: document.getElementById("app-view"),
   loginForm: document.getElementById("login-form"),
   loginError: document.getElementById("login-error"),
+  oidcLoginLink: document.getElementById("oidc-login-link"),
+  loginDivider: document.getElementById("login-divider"),
   cameraList: document.getElementById("camera-list"),
   saveButton: document.getElementById("save-button"),
   resetButton: document.getElementById("reset-button"),
@@ -396,6 +398,23 @@ async function loadConfiguration() {
   }
 }
 
+async function loadAuthOptions() {
+  try {
+    const options = await request("/api/auth-options");
+    elements.oidcLoginLink.hidden = !options.oidc;
+    elements.loginDivider.hidden = !options.oidc;
+  } catch (_) {
+    elements.oidcLoginLink.hidden = true;
+    elements.loginDivider.hidden = true;
+  }
+  const oidcError = new URLSearchParams(window.location.search).get("oidc_error");
+  if (oidcError) {
+    elements.loginError.textContent = oidcError;
+    elements.loginError.hidden = false;
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+}
+
 elements.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const submit = elements.loginForm.querySelector("button[type=submit]");
@@ -543,4 +562,5 @@ window.addEventListener("beforeunload", (event) => {
   event.returnValue = "";
 });
 
+loadAuthOptions();
 loadConfiguration();

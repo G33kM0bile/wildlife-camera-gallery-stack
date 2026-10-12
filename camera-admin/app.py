@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
-from base64 import b64encode
+from base64 import b64encode, urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
 from email.utils import formatdate
+import hashlib
 import hmac
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -49,7 +50,25 @@ SFTPGO_API_URL = os.environ.get("SFTPGO_API_URL", "http://127.0.0.1:8080").rstri
 BIND_ADDRESS = os.environ.get("CAMERA_ADMIN_BIND", "127.0.0.1")
 PORT = int(os.environ.get("CAMERA_ADMIN_PORT", "9095"))
 SECURE_COOKIE = os.environ.get("CAMERA_ADMIN_SECURE_COOKIE", "0") == "1"
+OIDC_ISSUER = os.environ.get("CAMERA_ADMIN_OIDC_ISSUER", "").rstrip("/")
+OIDC_CLIENT_ID = os.environ.get("CAMERA_ADMIN_OIDC_CLIENT_ID", "")
+OIDC_CLIENT_SECRET_FILE = Path(
+    os.environ.get(
+        "CAMERA_ADMIN_OIDC_CLIENT_SECRET_FILE",
+        "/etc/viltkamera-camera-admin/oidc-client-secret",
+    )
+)
+OIDC_REDIRECT_URI = os.environ.get("CAMERA_ADMIN_OIDC_REDIRECT_URI", "")
+OIDC_SCOPES = tuple(
+    value for value in os.environ.get("CAMERA_ADMIN_OIDC_SCOPES", "openid profile email").split() if value
+)
+OIDC_ALLOWED_USERS = frozenset(
+    value.strip().casefold()
+    for value in os.environ.get("CAMERA_ADMIN_OIDC_ALLOWED_USERS", "").split(",")
+    if value.strip()
+)
 SESSION_SECONDS = 8 * 60 * 60
+OIDC_REQUEST_SECONDS = 10 * 60
 MAX_BODY = 64 * 1024
 EXPECTED_IDS = tuple(f"hc960-{number:02d}" for number in range(1, 6))
 
@@ -58,6 +77,9 @@ HUNTING_CONFIG_LOCK = threading.RLock()
 SESSION_LOCK = threading.RLock()
 SESSIONS: dict[str, dict[str, Any]] = {}
 LOGIN_FAILURES: dict[str, list[float]] = {}
+OIDC_REQUESTS: dict[str, dict[str, Any]] = {}
+OIDC_DISCOVERY: dict[str, Any] | None = None
+OIDC_DISCOVERY_LOCK = threading.RLock()
 
 
 def utc_now() -> datetime:
@@ -414,6 +436,150 @@ def authenticate_admin(username: str, password: str) -> datetime:
     return expiry
 
 
+def oidc_enabled() -> bool:
+    return bool(
+        OIDC_ISSUER
+        and OIDC_CLIENT_ID
+        and OIDC_REDIRECT_URI
+        and OIDC_ALLOWED_USERS
+        and OIDC_CLIENT_SECRET_FILE.is_file()
+    )
+
+
+def oidc_client_secret() -> str:
+    try:
+        secret = OIDC_CLIENT_SECRET_FILE.read_text(encoding="utf-8").strip()
+    except OSError as error:
+        raise ConnectionError("OIDC-klienthemmeligheten kan ikke leses") from error
+    if not secret:
+        raise ConnectionError("OIDC-klienthemmeligheten er tom")
+    return secret
+
+
+def oidc_discovery() -> dict[str, Any]:
+    global OIDC_DISCOVERY
+    with OIDC_DISCOVERY_LOCK:
+        if OIDC_DISCOVERY is not None:
+            return dict(OIDC_DISCOVERY)
+        request = Request(
+            f"{OIDC_ISSUER}/.well-known/openid-configuration",
+            headers={"Accept": "application/json", "User-Agent": "viltkamera-camera-admin/1.1"},
+        )
+        try:
+            with urlopen(request, timeout=8) as response:
+                document = json.load(response)
+        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+            raise ConnectionError("Kunne ikke hente OIDC-konfigurasjonen fra Rauthy") from error
+        required = ("issuer", "authorization_endpoint", "token_endpoint", "userinfo_endpoint")
+        if not isinstance(document, dict) or any(
+            not isinstance(document.get(key), str) or not document[key] for key in required
+        ):
+            raise ConnectionError("Rauthy returnerte en ufullstendig OIDC-konfigurasjon")
+        if document["issuer"].rstrip("/") != OIDC_ISSUER:
+            raise ConnectionError("OIDC-utstederen samsvarer ikke med oppsettet")
+        OIDC_DISCOVERY = dict(document)
+        return dict(document)
+
+
+def oidc_login_url() -> str:
+    if not oidc_enabled():
+        raise RuntimeError("Rauthy-innlogging er ikke konfigurert")
+    discovery = oidc_discovery()
+    state = secrets.token_urlsafe(32)
+    nonce = secrets.token_urlsafe(32)
+    verifier = secrets.token_urlsafe(64)
+    challenge = urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest()).decode("ascii").rstrip("=")
+    now = time.time()
+    with SESSION_LOCK:
+        for key, request in list(OIDC_REQUESTS.items()):
+            if float(request.get("expires", 0)) <= now:
+                OIDC_REQUESTS.pop(key, None)
+        OIDC_REQUESTS[state] = {
+            "nonce": nonce,
+            "verifier": verifier,
+            "expires": now + OIDC_REQUEST_SECONDS,
+        }
+    return f"{discovery['authorization_endpoint']}?{urlencode({
+        'response_type': 'code',
+        'client_id': OIDC_CLIENT_ID,
+        'redirect_uri': OIDC_REDIRECT_URI,
+        'scope': ' '.join(OIDC_SCOPES),
+        'state': state,
+        'nonce': nonce,
+        'code_challenge': challenge,
+        'code_challenge_method': 'S256',
+    })}"
+
+
+def authenticate_oidc_callback(query: dict[str, list[str]]) -> tuple[str, datetime]:
+    state = query.get("state", [""])[0]
+    code = query.get("code", [""])[0]
+    provider_error = query.get("error", [""])[0]
+    if provider_error:
+        raise PermissionError("Rauthy avbrøt eller avviste innloggingen")
+    if not state or not code:
+        raise PermissionError("OIDC-svaret mangler kode eller sikkerhetstoken")
+    with SESSION_LOCK:
+        pending = OIDC_REQUESTS.pop(state, None)
+    if not pending or float(pending.get("expires", 0)) <= time.time():
+        raise PermissionError("OIDC-innloggingen er utløpt eller ugyldig")
+
+    discovery = oidc_discovery()
+    body = urlencode(
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": OIDC_REDIRECT_URI,
+            "client_id": OIDC_CLIENT_ID,
+            "client_secret": oidc_client_secret(),
+            "code_verifier": pending["verifier"],
+        }
+    ).encode("ascii")
+    token_request = Request(
+        discovery["token_endpoint"],
+        data=body,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "viltkamera-camera-admin/1.1",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(token_request, timeout=8) as response:
+            token = json.load(response)
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+        raise ConnectionError("Kunne ikke veksle OIDC-koden hos Rauthy") from error
+    access_token = token.get("access_token") if isinstance(token, dict) else None
+    if not isinstance(access_token, str) or not access_token:
+        raise ConnectionError("Rauthy returnerte ikke et gyldig tilgangstoken")
+
+    user_request = Request(
+        discovery["userinfo_endpoint"],
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"Bearer {access_token}",
+            "User-Agent": "viltkamera-camera-admin/1.1",
+        },
+    )
+    try:
+        with urlopen(user_request, timeout=8) as response:
+            user = json.load(response)
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+        raise ConnectionError("Kunne ikke bekrefte OIDC-brukeren hos Rauthy") from error
+    if not isinstance(user, dict) or not isinstance(user.get("sub"), str):
+        raise ConnectionError("Rauthy returnerte ugyldig brukerinformasjon")
+    username = str(user.get("preferred_username") or user.get("email") or "").strip()
+    if not username or username.casefold() not in OIDC_ALLOWED_USERS:
+        raise PermissionError("Rauthy-brukeren har ikke tilgang til kameraoppsettet")
+    try:
+        token_seconds = int(token.get("expires_in", SESSION_SECONDS))
+    except (TypeError, ValueError):
+        token_seconds = SESSION_SECONDS
+    expiry = utc_now() + timedelta(seconds=max(60, min(SESSION_SECONDS, token_seconds)))
+    return username, expiry
+
+
 def new_session(username: str, expiry: datetime) -> tuple[str, str]:
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(24)
@@ -548,6 +714,15 @@ class CameraAdminHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if path == "/api/auth-options":
+            self.send_json(HTTPStatus.OK, {"oidc": oidc_enabled()})
+            return
+        if path == "/auth/oidc/login":
+            self.handle_oidc_login()
+            return
+        if path == "/auth/oidc/callback":
+            self.handle_oidc_callback()
+            return
         if path == "/":
             self.serve_static("index.html", cache_control="no-store")
             return
@@ -634,6 +809,41 @@ class CameraAdminHandler(BaseHTTPRequestHandler):
             {"ok": True, "csrf": csrf, "username": username},
             extra_headers={"Set-Cookie": cookie},
         )
+
+    def send_redirect(self, location: str, *, cookie: str | None = None) -> None:
+        headers = {"Location": location}
+        if cookie:
+            headers["Set-Cookie"] = cookie
+        self.send_bytes(HTTPStatus.SEE_OTHER, b"", "text/plain; charset=utf-8", extra_headers=headers)
+
+    def handle_oidc_login(self) -> None:
+        try:
+            location = oidc_login_url()
+        except RuntimeError as error:
+            self.send_error_json(HTTPStatus.NOT_FOUND, str(error))
+            return
+        except ConnectionError as error:
+            self.send_error_json(HTTPStatus.BAD_GATEWAY, str(error))
+            return
+        self.send_redirect(location)
+
+    def handle_oidc_callback(self) -> None:
+        try:
+            username, expiry = authenticate_oidc_callback(parse_qs(urlparse(self.path).query))
+        except PermissionError as error:
+            self.send_redirect(f"/?{urlencode({'oidc_error': str(error)})}")
+            return
+        except ConnectionError as error:
+            self.send_redirect(f"/?{urlencode({'oidc_error': str(error)})}")
+            return
+        token, _ = new_session(username, expiry)
+        cookie = (
+            f"camera_admin_session={token}; Path=/; HttpOnly; SameSite=Lax; "
+            f"Max-Age={max(60, int(expiry.timestamp() - time.time()))}"
+        )
+        if SECURE_COOKIE:
+            cookie += "; Secure"
+        self.send_redirect("/", cookie=cookie)
 
     def handle_logout(self) -> None:
         authenticated = self.require_session()

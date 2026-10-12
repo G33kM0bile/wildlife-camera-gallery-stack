@@ -73,6 +73,10 @@
           <p class="eyebrow">Administrasjon</p>
           <h2 id="admin-login-title">Kameraoppsett</h2>
           <p class="login-copy">Logg inn for å endre plassering og metadata for nye bilder.</p>
+          <a id="oidc-login-link" class="primary-button full-width oidc-login" href="/auth/oidc/login" hidden>
+            Logg inn med Rauthy
+          </a>
+          <div id="login-divider" class="login-divider" hidden><span>eller bruk eksisterende innlogging</span></div>
           <form id="login-form" novalidate>
             <label>
               Administratornavn
@@ -182,6 +186,6 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
     <script src="/static/vendor/leaflet/leaflet.js?v=1.9.4"></script>
-    <script src="/static/app.js?v=1.4.0" defer></script>
+    <script src="/static/app.js?v=1.5.0" defer></script>
   </body>
 </html>

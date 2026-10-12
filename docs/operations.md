@@ -15,6 +15,10 @@ cd /opt/pigallery2 && docker compose logs --tail=100
 findmnt /photos
 ```
 
+After enabling Rauthy, test both login paths for PiGallery2, SFTPGo and the
+camera setup site. Never remove the local-password path until recovery access
+has been tested independently. See [sso-rauthy.md](sso-rauthy.md).
+
 Check free space on the photo store, SFTPGo state and PiGallery database/tmp
 volumes. A full photo filesystem can break uploads and SQLite writes in
 different ways.
