@@ -12,6 +12,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import logging
 import math
 import mimetypes
 import os
@@ -553,7 +554,11 @@ def authenticate_oidc_callback(query: dict[str, list[str]]) -> tuple[str, dateti
     try:
         with urlopen(token_request, timeout=8) as response:
             token = json.load(response)
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+    except HTTPError as error:
+        # Do not log response bodies: providers may echo credentials or codes.
+        logging.warning("OIDC token endpoint returned HTTP %s", error.code)
+        raise ConnectionError("Kunne ikke veksle OIDC-koden hos Rauthy") from error
+    except (URLError, TimeoutError, json.JSONDecodeError) as error:
         raise ConnectionError("Kunne ikke veksle OIDC-koden hos Rauthy") from error
     access_token = token.get("access_token") if isinstance(token, dict) else None
     if not isinstance(access_token, str) or not access_token:

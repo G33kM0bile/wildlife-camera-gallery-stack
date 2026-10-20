@@ -15,21 +15,43 @@ attributes user-editable, or place self-registered users into `admin`.
 No Rauthy user accounts are created by the application provisioning code:
 create/register the identity in Rauthy, assign its group and a unique
 `preferred_username`, then provision application accounts at first login.
-For SFTPGo, set the administrator-controlled `local_username` attribute on the
-Rauthy identity; preserve exact capitalization of existing local names.
+SFTPGo uses the standard `preferred_username` claim for new SSO accounts.
+Existing local accounts remain available with their original names. An owner
+whose legacy local name differs in capitalization may get a separate SSO
+account; this mapping change was explicitly approved by the operator.
+PiGallery still prefers the existing `local_username` claim when present and
+falls back to `preferred_username` for new identities.
 
 ## Current implementation and verification status
 
 Production Rauthy was observed running 0.37.1. Its existing `admin`, `hunters`,
 `gamers`, `lab`, and `user` groups were inspected. The `groups` scope was added
 to the default scopes for clients `kamera`, `pigallery2`, and `sftpgo`, preserving
-`openid` and the existing allowed scopes. No membership, signing algorithm,
-redirect URI, login prefix, or password changes were made.
+`openid` and the existing allowed scopes. The additional SFTPGo admin callback
+`https://sftpgo.8370.no/oidc-admin/web/oidc/redirect` was registered. No
+membership, signing algorithm, login prefix, or password changes were made.
 
-The following application changes are prepared locally, not yet deployed or
-tested against production. The host identified by the operator is
-`192.168.1.246`; its containers and application versions still require live
-verification. SSH was reachable but existing authentication was rejected.
+Live inventory verified Foxtrot in Lab2/YTR: CT 107 is SFTPGo 2.7.6 with the
+camera-settings app; CT 110 is PiGallery2 3.5.2. Deployment was carried out
+through the signed-in Proxmox node shell. CT 107 now runs the group-aware
+camera app, file-user hook, administrator creation rule and dedicated Caddy
+portal router. CT 110 runs `viltkamera/pigallery2:3.5.2-group-access`, layered
+on the existing `3.5.2-map-camera-pins-minsin-sso` image. Its photo mount
+remains read-only and the container reported healthy.
+
+Application configs and consistent SQLite backups were saved under
+`/root/viltkamera-access-backup-20261020` inside each CT. Both database backups
+passed `PRAGMA integrity_check`. Public login pages, separate OIDC callback
+routes, internal portal separation and the existing 2022/2121 upload listeners
+were verified. Gallery SSO succeeded. After the approved standard-username
+change, the owner's personal Rauthy account successfully entered both SFTPGo
+WebClient and WebAdmin; new `pao87` accounts were provisioned while the legacy
+`PAO87` accounts remained intact. The file portal displayed the camera folders
+and upload controls, and WebAdmin displayed user and administrator management.
+Camera-settings SSO reached the callback but Rauthy rejected the existing
+client secret (HTTP 401). The operator has been asked to synchronize that
+credential; camera SSO acceptance remains pending. No hunter identities or
+production test photos were created, and no camera settings were saved.
 
 ## Camera setup
 
@@ -50,8 +72,11 @@ camera-app local account. Group matching is exact and case-sensitive.
 
 ## PiGallery2
 
-Build the existing pinned 3.5.2 image with `pigallery2-map/build.sh`; it now
-also includes the OIDC group policy overlay. Do not enable group auth with an
+For a full rebuild, use `pigallery2-map/build.sh`; it includes the group-policy
+overlay. For the deployed backend-only update, run the pinned compiler in
+`sso/package.json` to regenerate `sso/gallery-backend`, then build
+`sso/gallery.Dockerfile` with `BASE_IMAGE` set to the existing custom image.
+This retains the existing frontend and map build. Do not enable group auth with an
 upstream image that lacks this overlay. Enable `PIGALLERY_OIDC_GROUP_AUTH=1`
 in the actual Compose service and recreate it. Add `groups` to
 `Users.oidc.scopes`, preserve the existing scopes and username claim, and set
@@ -70,7 +95,7 @@ upstream mapping, so restore `autoCreateUser=false` as part of rollback.
 Keep the photo bind mount read-only. Photo deletion is provided by SFTPGo;
 sighting marks are stored separately in the gallery extension's writable state.
 
-## SFTPGo 2.7.5: user provisioning
+## SFTPGo 2.7.6: user provisioning
 
 Back up the provider database and active config first. Check for existing
 pre-login hooks, identity-provider event rules, and group settings that disable
@@ -98,7 +123,7 @@ Merge into the existing config:
 
 Preserve the existing OIDC issuer (including trailing slash), credentials,
 RS256 signing and disabled PKCE settings. Add `groups` to OIDC `scopes` and
-`custom_fields`; retain `username_field=local_username`.
+`custom_fields`; use `username_field=preferred_username` for automatic accounts.
 
 The hook provisions browser file users only. It makes no changes for FTP,
 SSH/SFTP, DAV or local HTTP password logins. OIDC claims must include `hunters`
@@ -108,18 +133,23 @@ inside the five camera directories. They cannot delete or rename the camera
 directories themselves or administer SFTPGo. An admin file user receives `*`
 over the verified storage root. File-user access never confers WebAdmin access.
 
-Existing file accounts require explicit review and enrollment by setting their
+Existing hunter file accounts require explicit review and enrollment by setting their
 description to `viltkamera-oidc-managed`. Their home directory must match the
 template; disabled accounts remain denied. Managed permissions are synchronized
 at each OIDC login. The hook preserves existing credentials, replaces inherited
 groups/mounts/filters, and limits hunters to browser access. Admin file users
 receive no protocol restrictions from the hook.
+An existing file account authenticated with the trusted `admin` group may keep
+its already approved home directory, filesystem and virtual mounts, without
+manual enrollment. Disabled accounts still fail; credentials and MFA state are
+preserved. Removing `admin` requires explicit hunter enrollment if its legacy
+home directory differs from the hunters template.
 Hunters cannot enable local password/API-key login or public shares through
 WebClient; this keeps provisioned file access tied to OIDC group checks.
 
 ## SFTPGo administrator provisioning and portal separation
 
-SFTPGo 2.7.5 does not treat its administrator store and file-user store as the
+SFTPGo 2.7.6 does not treat its administrator store and file-user store as the
 same account. Do not combine `implicit_roles=true` with an unrestricted
 automatic administrator-creation template: any hunter clicking the WebAdmin
 login would then request an administrator identity.
@@ -136,19 +166,27 @@ account-check action can create an administrator with this template:
 }
 ```
 
-Use create-only mode initially to preserve existing administrator records.
-With explicit role mapping, an `admin` identity cannot log in to WebClient on
-the same binding; SFTPGo rejects admin-role tokens there. Therefore **full
-administration plus direct browser file access for the same admin identity
-still needs a separately routed file-client/admin binding arrangement**.
-A safe arrangement uses two HTTP bindings with separate public origins:
-file-only binding (`enable_web_admin=false`, implicit user roles) and admin-only
-binding (`enable_web_client=false`, explicit `groups` role mapping). Give each
-binding the matching Rauthy callback, route each origin only to its intended
-binding, and prevent bypass through another exposed admin-enabled binding.
-Verify callback/audience handling and active proxy configuration before applying.
-Do not enable automatic administrator provisioning until that separation is
-implemented and tested. This routing is not included in the local code patch.
+The deployed arrangement keeps the existing public origin and port 8080:
+
+| Public route | Internal target | Authorization |
+| --- | --- | --- |
+| `/web/client/*` and normal file callback | `127.0.0.1:8081` | File-only binding, implicit user role; group-enforcing pre-login hook |
+| `/web/admin/*` | `127.0.0.1:8082` | Admin-only binding, explicit `groups` role mapping |
+| `/oidc-admin/web/oidc/redirect` | `127.0.0.1:8082/web/oidc/redirect` | Distinct registered callback for the admin binding |
+
+`sso/Caddyfile` implements that routing. The package's unused default Caddy
+service is masked; `viltkamera-sftpgo-proxy.service` runs the dedicated router
+as `nobody`, with a private state directory. Both backend listeners bind only
+to loopback and accept forwarded headers only from loopback. `proxy_mode=0`
+is intentional: `1` enables the unrelated HAProxy PROXY-protocol listener and
+prevents startup without additional common proxy configuration.
+
+`sso/prepare_sftpgo.py` stages the config while retaining credentials and
+non-HTTP transfer settings. It also generates the create-only admin IDP action
+and rule, imported using SFTPGo's native `initprovider --loaddata-from` command
+with the service stopped. Existing user/admin rows are not included in that
+import. The five pre-existing camera heartbeat rules were retained. Local
+admin password login remains on the admin binding.
 
 ## Global admin across other sites
 
@@ -173,7 +211,11 @@ onboarding/offboarding must update both membership and built-in roles.
 Local checks: Python camera-admin suite, Python SFTPGo hook suite and Node 24+
 `node --test sso/pigallery-oidc.test.cjs`. The Node harness executes the actual
 callback overlay with mocked validated token/client and account store; it does
-not replace a full TypeScript/image build or live identity-provider test.
+not replace a full application type-check or live identity-provider test.
+There are 30 passing local tests. Generated hunter/admin file-user records
+were also accepted by installed SFTPGo 2.7.6 in an isolated SQLite provider,
+without adding test identities to production. The deployed backend image was
+built successfully and its JavaScript syntax checked.
 
 Before rollout completion, verify with disposable media: a new hunter can
 mark/unmark sightings, save camera settings and delete a test photo; a new admin
@@ -187,4 +229,9 @@ Rollback: restore the saved app configs/provider state and previous image;
 restore `autoCreateUser=false` before disabling the PiGallery group overlay;
 restore the prior camera OIDC environment and SFTPGo hook/event rules. The
 added Rauthy default scope can be removed by restoring each client's previous
-default of `openid`. Do not remove local emergency accounts or photo data.
+default of `openid`; remove the extra admin callback if rolling back routing.
+Restore the saved provider database or disable/remove the new admin creation
+rule **before** restoring the old implicit-admin binding: leaving that rule
+active with the old implicit-role setup would allow unwanted admin creation.
+Stop the dedicated proxy before restoring SFTPGo's original port 8080. Do not
+remove local emergency accounts or photo data.
