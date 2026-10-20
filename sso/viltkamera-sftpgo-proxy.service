@@ -1,0 +1,17 @@
+[Unit]
+Description=Viltkamera SFTPGo browser portal routing
+After=network.target sftpgo.service
+Requires=sftpgo.service
+
+[Service]
+User=nobody
+Group=nogroup
+ExecStart=/usr/bin/caddy run --config /etc/viltkamera-sso/Caddyfile --adapter caddyfile
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

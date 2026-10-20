@@ -1,0 +1,25 @@
+{
+    admin off
+    auto_https off
+}
+
+:8080 {
+    @admin_callback path /oidc-admin/web/oidc/redirect
+    handle @admin_callback {
+        uri strip_prefix /oidc-admin
+        reverse_proxy 127.0.0.1:8082 {
+            header_up X-Forwarded-Proto https
+        }
+    }
+    @admin_portal path /web/admin /web/admin/*
+    handle @admin_portal {
+        reverse_proxy 127.0.0.1:8082 {
+            header_up X-Forwarded-Proto https
+        }
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8081 {
+            header_up X-Forwarded-Proto https
+        }
+    }
+}
