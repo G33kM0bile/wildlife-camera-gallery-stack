@@ -5,7 +5,11 @@ It edits camera position, location, title, subject, comment, tags and enabled
 state. Authentication is delegated to the existing SFTPGo administrator API.
 Optional Rauthy OIDC login runs in parallel with that existing password path;
 see [`../docs/sso-rauthy.md`](../docs/sso-rauthy.md). OIDC administrators must
-also be listed explicitly in `CAMERA_ADMIN_OIDC_ALLOWED_USERS`.
+be listed explicitly in `CAMERA_ADMIN_OIDC_ALLOWED_USERS` or have an exact
+group membership listed in `CAMERA_ADMIN_OIDC_ALLOWED_GROUPS`. The hunters
+configuration permits `hunters,admin` and requests the `groups` scope. A
+successful group login creates a session without a local account or SFTPGo
+administrator account. Missing or malformed group claims grant no access.
 The authenticated editor also manages the active Statskog hunting-field ID and
 display name. IDs are checked against the public ArcGIS layer before saving;
 the browser never receives the InfluxDB token. The safe shared configuration is

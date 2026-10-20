@@ -67,6 +67,11 @@ OIDC_ALLOWED_USERS = frozenset(
     for value in os.environ.get("CAMERA_ADMIN_OIDC_ALLOWED_USERS", "").split(",")
     if value.strip()
 )
+OIDC_ALLOWED_GROUPS = frozenset(
+    value.strip()
+    for value in os.environ.get("CAMERA_ADMIN_OIDC_ALLOWED_GROUPS", "").split(",")
+    if value.strip()
+)
 SESSION_SECONDS = 8 * 60 * 60
 OIDC_REQUEST_SECONDS = 10 * 60
 MAX_BODY = 64 * 1024
@@ -441,7 +446,7 @@ def oidc_enabled() -> bool:
         OIDC_ISSUER
         and OIDC_CLIENT_ID
         and OIDC_REDIRECT_URI
-        and OIDC_ALLOWED_USERS
+        and (OIDC_ALLOWED_USERS or OIDC_ALLOWED_GROUPS)
         and OIDC_CLIENT_SECRET_FILE.is_file()
     )
 
@@ -570,7 +575,13 @@ def authenticate_oidc_callback(query: dict[str, list[str]]) -> tuple[str, dateti
     if not isinstance(user, dict) or not isinstance(user.get("sub"), str):
         raise ConnectionError("Rauthy returnerte ugyldig brukerinformasjon")
     username = str(user.get("preferred_username") or user.get("email") or "").strip()
-    if not username or username.casefold() not in OIDC_ALLOWED_USERS:
+    groups = user.get("groups")
+    group_allowed = (
+        isinstance(groups, list)
+        and all(isinstance(group, str) for group in groups)
+        and not OIDC_ALLOWED_GROUPS.isdisjoint(groups)
+    )
+    if not username or not (username.casefold() in OIDC_ALLOWED_USERS or group_allowed):
         raise PermissionError("Rauthy-brukeren har ikke tilgang til kameraoppsettet")
     try:
         token_seconds = int(token.get("expires_in", SESSION_SECONDS))

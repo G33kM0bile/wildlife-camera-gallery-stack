@@ -1,5 +1,9 @@
 # Rauthy SSO with local-login fallback
 
+For the opt-in `hunters` / `admin` group policy and automatic application
+account creation, see [Group access](group-access.md). The configuration below
+describes the original existing-account-only mode.
+
 This deployment can use Rauthy for browser SSO without removing any existing
 password login. Grafana is configured separately and is not changed by this
 guide.
