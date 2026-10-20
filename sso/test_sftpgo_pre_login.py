@@ -46,9 +46,12 @@ class ProvisionTests(unittest.TestCase):
         self.user.update(id=12, home_dir='/srv/sftpgo/data', status=1)
         with self.assertRaises(PermissionError):
             provision(self.user, 'OIDC', self.template)
-        self.user.update(description=MARKER, password='existing-hash')
+        self.user.update(description=MARKER, password='existing-hash',
+                         filters={'totp_config': {'enabled': True}, 'recovery_codes': [{'used': False}]})
         result = provision(self.user, 'OIDC', self.template)
         self.assertEqual(result['password'], 'existing-hash')
+        self.assertEqual(result['filters']['totp_config'], {'enabled': True})
+        self.assertEqual(result['filters']['recovery_codes'], [{'used': False}])
         self.user['status'] = 0
         with self.assertRaises(PermissionError):
             provision(self.user, 'OIDC', self.template)

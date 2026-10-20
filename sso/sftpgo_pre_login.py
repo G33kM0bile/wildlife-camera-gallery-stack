@@ -65,6 +65,12 @@ def provision(user: dict, protocol: str, template: dict | None = None) -> dict |
                        'api-key-auth-change-disabled', 'publickey-change-disabled',
                        'tls-cert-change-disabled', 'shares-disabled'],
     }
+    # Preserve enrolled users' MFA state while replacing authorization filters.
+    if existing:
+        previous_filters = user.get('filters', {})
+        for key in ('totp_config', 'recovery_codes', 'two_factor_protocols', 'additional_emails'):
+            if key in previous_filters:
+                result['filters'][key] = copy.deepcopy(previous_filters[key])
     return result
 
 
