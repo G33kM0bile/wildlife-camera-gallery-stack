@@ -6,6 +6,9 @@ Requires=sftpgo.service
 [Service]
 User=nobody
 Group=nogroup
+StateDirectory=viltkamera-sftpgo-proxy
+StateDirectoryMode=0700
+Environment=HOME=/var/lib/viltkamera-sftpgo-proxy
 ExecStart=/usr/bin/caddy run --config /etc/viltkamera-sso/Caddyfile --adapter caddyfile
 Restart=on-failure
 NoNewPrivileges=true

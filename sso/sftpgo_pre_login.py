@@ -26,11 +26,12 @@ def provision(user: dict, protocol: str, template: dict | None = None) -> dict |
         raise PermissionError('missing or malformed groups')
     if not {'hunters', 'admin'}.intersection(groups):
         raise PermissionError('wildlife group membership required')
+    is_admin = 'admin' in groups
     username = user.get('username')
     if not isinstance(username, str) or not username or re.match(r'^hc960-', username, re.I):
         raise PermissionError('invalid or reserved camera identity')
     existing = bool(user.get('id'))
-    if existing and user.get('description') != MARKER:
+    if existing and user.get('description') != MARKER and not is_admin:
         raise PermissionError('existing file account requires explicit enrollment')
     if existing and user.get('status') != 1:
         raise PermissionError('file account is disabled')
@@ -41,13 +42,15 @@ def provision(user: dict, protocol: str, template: dict | None = None) -> dict |
             or any(type(template.get(key)) is not int or template[key] <= 0 for key in ('uid', 'gid'))):
         raise ValueError('configure the verified photo root and non-root UID/GID first')
     result = copy.deepcopy(user if existing else template)
-    if existing and result.get('home_dir') != template['home_dir']:
+    if existing and result.get('home_dir') != template['home_dir'] and not is_admin:
         raise PermissionError('managed photo root differs from template')
     result.pop('oidc_custom_fields', None)
-    result.update(username=username, description=MARKER)
+    result.update(username=username)
+    if not existing or not is_admin:
+        result['description'] = MARKER
     if not existing:
         result.update(status=1, id=0, password='', public_keys=[])
-    if 'admin' in groups:
+    if is_admin:
         result['permissions'] = {'/': ['*']}
     else:
         result['permissions'] = {'/': ['list']}
@@ -55,9 +58,10 @@ def provision(user: dict, protocol: str, template: dict | None = None) -> dict |
             result['permissions'][f'/hc960-{number:02d}'] = list(PHOTO_PERMISSIONS)
     # Do not inherit arbitrary SFTPGo groups, virtual mounts or elevated flags.
     result['groups'] = []
-    result['virtual_folders'] = []
-    result['filesystem'] = {'provider': 0}
-    result['filters'] = {} if 'admin' in groups else {
+    if not (existing and is_admin):
+        result['virtual_folders'] = []
+        result['filesystem'] = {'provider': 0}
+    result['filters'] = {} if is_admin else {
         'denied_protocols': ['SSH', 'FTP', 'DAV'],
         'denied_login_methods': ['password'],
         'allow_api_key_auth': False,

@@ -35,6 +35,20 @@ class ProvisionTests(unittest.TestCase):
                 self.user['oidc_custom_fields']['groups'] = groups
                 provision(self.user, 'OIDC', self.template)
 
+    def test_existing_admin_keeps_approved_storage_and_credentials(self):
+        self.user.update(id=12, home_dir='/srv/sftpgo', status=1, description='existing owner',
+                         password='existing-hash', filesystem={'provider': 0},
+                         virtual_folders=[{'name': 'existing-mount'}])
+        self.user['oidc_custom_fields']['groups'] = ['admin']
+        result = provision(self.user, 'OIDC', self.template)
+        self.assertEqual(result['home_dir'], '/srv/sftpgo')
+        self.assertEqual(result['virtual_folders'], self.user['virtual_folders'])
+        self.assertEqual(result['password'], 'existing-hash')
+        self.assertEqual(result['permissions'], {'/': ['*']})
+        self.user['status'] = 0
+        with self.assertRaises(PermissionError):
+            provision(self.user, 'OIDC', self.template)
+
     def test_camera_password_uploads_are_untouched(self):
         for protocol in ('FTP', 'SSH', 'HTTP', 'DAV', ''):
             self.assertIsNone(provision({'username': 'hc960-01'}, protocol))
