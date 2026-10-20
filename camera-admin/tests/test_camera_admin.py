@@ -179,6 +179,39 @@ class CameraAdminTests(unittest.TestCase):
             )
 
     @patch("app.urlopen")
+    def test_oidc_group_membership_controls_new_users(self, mocked_urlopen):
+        discovery = {
+            "token_endpoint": "https://auth.example.test/token",
+            "userinfo_endpoint": "https://auth.example.test/userinfo",
+        }
+        with (
+            patch.object(app, "OIDC_ALLOWED_USERS", frozenset()),
+            patch.object(app, "OIDC_ALLOWED_GROUPS", frozenset({"hunters", "admin"})),
+            patch.object(app, "OIDC_DISCOVERY", discovery),
+            patch.object(app, "oidc_client_secret", return_value="secret"),
+        ):
+            for groups, allowed in ((["hunters"], True), (["admin"], True),
+                                    (["hunters", "admin"], True), ([], False),
+                                    ("hunters", False), (["Hunters"], False),
+                                    (["hunters-other"], False), (["hunters", 1], False),
+                                    (None, False)):
+                with self.subTest(groups=groups):
+                    mocked_urlopen.side_effect = [
+                        FakeResponse({"access_token": "access", "expires_in": 900}),
+                        FakeResponse({"sub": "new-subject", "preferred_username": "new-hunter", "groups": groups}),
+                    ]
+                    app.OIDC_REQUESTS["group-state"] = {
+                        "verifier": "verifier", "expires": time.time() + 60,
+                    }
+                    query = {"state": ["group-state"], "code": ["code"]}
+                    if allowed:
+                        username, _ = app.authenticate_oidc_callback(query)
+                        self.assertEqual(username, "new-hunter")
+                    else:
+                        with self.assertRaises(PermissionError):
+                            app.authenticate_oidc_callback(query)
+
+    @patch("app.urlopen")
     def test_hunting_ground_lookup_uses_public_arcgis(self, mocked_urlopen):
         mocked_urlopen.return_value = FakeResponse(
             {

@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "node build-gallery-overlay.cjs",
+    "test": "node --test pigallery-oidc.test.cjs"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}

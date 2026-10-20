@@ -4,6 +4,8 @@ services:
     container_name: pigallery2
     environment:
       NODE_ENV: production
+      # Requires the custom image built by pigallery2-map/build.sh.
+      PIGALLERY_OIDC_GROUP_AUTH: ${PIGALLERY_OIDC_GROUP_AUTH:-0}
     volumes:
       - ${PIGALLERY_ROOT:-/opt/pigallery2}/config:/app/data/config
       - ${PIGALLERY_ROOT:-/opt/pigallery2}/db:/app/data/db

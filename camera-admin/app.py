@@ -12,6 +12,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import logging
 import math
 import mimetypes
 import os
@@ -65,6 +66,11 @@ OIDC_SCOPES = tuple(
 OIDC_ALLOWED_USERS = frozenset(
     value.strip().casefold()
     for value in os.environ.get("CAMERA_ADMIN_OIDC_ALLOWED_USERS", "").split(",")
+    if value.strip()
+)
+OIDC_ALLOWED_GROUPS = frozenset(
+    value.strip()
+    for value in os.environ.get("CAMERA_ADMIN_OIDC_ALLOWED_GROUPS", "").split(",")
     if value.strip()
 )
 SESSION_SECONDS = 8 * 60 * 60
@@ -441,7 +447,7 @@ def oidc_enabled() -> bool:
         OIDC_ISSUER
         and OIDC_CLIENT_ID
         and OIDC_REDIRECT_URI
-        and OIDC_ALLOWED_USERS
+        and (OIDC_ALLOWED_USERS or OIDC_ALLOWED_GROUPS)
         and OIDC_CLIENT_SECRET_FILE.is_file()
     )
 
@@ -548,7 +554,11 @@ def authenticate_oidc_callback(query: dict[str, list[str]]) -> tuple[str, dateti
     try:
         with urlopen(token_request, timeout=8) as response:
             token = json.load(response)
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+    except HTTPError as error:
+        # Do not log response bodies: providers may echo credentials or codes.
+        logging.warning("OIDC token endpoint returned HTTP %s", error.code)
+        raise ConnectionError("Kunne ikke veksle OIDC-koden hos Rauthy") from error
+    except (URLError, TimeoutError, json.JSONDecodeError) as error:
         raise ConnectionError("Kunne ikke veksle OIDC-koden hos Rauthy") from error
     access_token = token.get("access_token") if isinstance(token, dict) else None
     if not isinstance(access_token, str) or not access_token:
@@ -570,7 +580,13 @@ def authenticate_oidc_callback(query: dict[str, list[str]]) -> tuple[str, dateti
     if not isinstance(user, dict) or not isinstance(user.get("sub"), str):
         raise ConnectionError("Rauthy returnerte ugyldig brukerinformasjon")
     username = str(user.get("preferred_username") or user.get("email") or "").strip()
-    if not username or username.casefold() not in OIDC_ALLOWED_USERS:
+    groups = user.get("groups")
+    group_allowed = (
+        isinstance(groups, list)
+        and all(isinstance(group, str) for group in groups)
+        and not OIDC_ALLOWED_GROUPS.isdisjoint(groups)
+    )
+    if not username or not (username.casefold() in OIDC_ALLOWED_USERS or group_allowed):
         raise PermissionError("Rauthy-brukeren har ikke tilgang til kameraoppsettet")
     try:
         token_seconds = int(token.get("expires_in", SESSION_SECONDS))
