@@ -206,6 +206,34 @@ No other site's ACLs, roles or auto-provisioning settings have been changed.
 Automatic Rauthy role inheritance from a group is not implemented by this patch;
 onboarding/offboarding must update both membership and built-in roles.
 
+### Lab2 follow-up prepared, not deployed
+
+Live inspection confirmed PVE 9.2.11 supports `groups-claim`,
+`groups-autocreate`, and `groups-overwrite`. Realm `rauthy` currently has no
+group mapping; the existing capitalized local group `Admin` has propagated
+`Administrator` on `/`. The proposed mapping is `groups-claim=groups`, an
+explicit `admin-rauthy` group with that same root role, and
+`groups-autocreate=0`. Enable `groups-overwrite=1` only as an explicit migration:
+it replaces local PVE group memberships on each OIDC login. Preserve the local
+recovery administrator and back up `user.cfg` and `domains.cfg` first.
+The Rauthy client `proxmox-lab2` needs `groups` added to its default scopes;
+retain `openid` and `local_username`.
+
+Grafana CT 122 runs 13.2.4. Its OAuth signup and role sync are enabled, but
+`allow_assign_grafana_admin=false` and its existing role expression only maps
+app-specific `grafana-admin` / `grafana-editor` roles. The proposed change
+prepends `contains(groups || '[]', 'admin') && 'GrafanaAdmin' ||` to that
+existing expression, sets `allow_assign_grafana_admin=true`, and appends
+`groups` to OAuth scopes. Its Rauthy client already includes `groups` in the
+default scopes. Back up the private config before editing; a brief Grafana
+restart and fresh owner SSO are required. Other users retain the existing
+role expression. Lab2 PBS CT 800 runs 4.2.8 and has automatic OIDC user
+creation, but its administrator authorization still needs separate inspection.
+
+These follow-ups have not been applied. See the upstream
+[Proxmox group mapping documentation](https://github.com/proxmox/pve-docs/blob/master/pveum.adoc#groups-mapping)
+and [Grafana OAuth documentation](https://grafana.com/docs/grafana/latest/setup-grafana/configure-access/configure-authentication/generic-oauth/).
+
 ## Acceptance and rollback
 
 Local checks: Python camera-admin suite, Python SFTPGo hook suite and Node 24+
