@@ -22,6 +22,7 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(admin['oidc']['redirect_base_url'], 'https://sftpgo.example.test/oidc-admin')
         for binding in (files, admin):
             self.assertEqual(binding['address'], '127.0.0.1')
+            self.assertEqual(binding['proxy_mode'], 0)
             self.assertEqual(binding['oidc']['client_secret'], 'preserve-secret')
             self.assertIn('groups', binding['oidc']['custom_fields'])
         self.assertEqual(result['ftpd'], original['ftpd'])

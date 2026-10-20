@@ -27,7 +27,8 @@ def stage_config(config):
         oidc['scopes'] = list(dict.fromkeys(oidc.get('scopes', []) + ['groups']))
         oidc['custom_fields'] = list(dict.fromkeys(oidc.get('custom_fields', []) + ['groups']))
         # Only the local proxy may supply client-IP / secure-cookie headers.
-        binding.update(proxy_mode=1, proxy_allowed=['127.0.0.1/32'],
+        # proxy_mode=1 enables the unrelated HAProxy PROXY protocol listener.
+        binding.update(proxy_mode=0, proxy_allowed=['127.0.0.1/32'],
                        client_ip_proxy_header='X-Forwarded-For', client_ip_header_depth=0)
     file_binding['oidc'].update(implicit_roles=True, role_field='')
     admin_binding['oidc'].update(implicit_roles=False, role_field='groups')
