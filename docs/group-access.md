@@ -191,46 +191,65 @@ admin password login remains on the admin binding.
 ## Global admin across other sites
 
 Rauthy groups do not automatically grant built-in Rauthy roles or local app
-permissions. A global admin rollout remains pending for all services below:
+permissions. The global rollout status is:
 
 | Service | Required mapping / check |
 | --- | --- |
 | Rauthy | Assign built-in `rauthy_admin` to every approved `admin` identity; group membership alone is insufficient. Keep the emergency administrator. |
 | Cloudflare Access | Permit `admin` identities in each app policy, while retaining app authorization checks. |
-| Grafana | Map `admin` to server administrator; verify server-admin mapping is enabled and user sync works. |
-| Proxmox VE (Labs 1–4) | Verify each OIDC realm's group mapping and assign Administrator on `/` with propagation to the mapped admin group. |
+| Grafana | Deployed and verified: exact `admin` group maps to server administrator; owner SSO has `is_admin=1` and organization `Admin`. |
+| Proxmox VE Lab2 | Deployed and verified: `admin-rauthy` has propagated Administrator on `/`; owner SSO synchronizes membership. |
+| Proxmox VE (Labs 1, 3, 4) | Pending: verify each OIDC realm's group mapping and assign Administrator on `/` with propagation to the mapped admin group. |
 | Proxmox Backup Server (Labs 2–4) | Verify realm/account provisioning and grant Admin on `/` through the permissions supported by the installed version. |
 | Gramps Web, Tandoor, Nexterm, NetworkOptimizer | Inspect each installed implementation and explicitly map/approve application administrators; do not assume an OIDC group grants privileges. |
 
-No other site's ACLs, roles or auto-provisioning settings have been changed.
+Apart from Viltkamera, Lab2 PVE and Grafana, no other site's ACLs, roles or
+auto-provisioning settings have been changed.
 Automatic Rauthy role inheritance from a group is not implemented by this patch;
 onboarding/offboarding must update both membership and built-in roles.
 
-### Lab2 follow-up prepared, not deployed
+### Lab2 Proxmox and Grafana deployment — 2026-10-20
 
 Live inspection confirmed PVE 9.2.11 supports `groups-claim`,
-`groups-autocreate`, and `groups-overwrite`. Realm `rauthy` currently has no
-group mapping; the existing capitalized local group `Admin` has propagated
-`Administrator` on `/`. The proposed mapping is `groups-claim=groups`, an
-explicit `admin-rauthy` group with that same root role, and
-`groups-autocreate=0`. Enable `groups-overwrite=1` only as an explicit migration:
-it replaces local PVE group memberships on each OIDC login. Preserve the local
-recovery administrator and back up `user.cfg` and `domains.cfg` first.
-The Rauthy client `proxmox-lab2` needs `groups` added to its default scopes;
-retain `openid` and `local_username`.
+`groups-autocreate`, and `groups-overwrite`. Following explicit operator
+approval, realm `rauthy` now uses `groups-claim=groups`,
+`groups-autocreate=0`, and `groups-overwrite=1`. The explicit group
+`admin-rauthy` has propagated `Administrator` on `/`. This replaces local PVE
+group memberships on each OIDC login. The local recovery accounts and the
+capitalized legacy group `Admin` remain available. The Rauthy client
+`proxmox-lab2` now includes `groups` in its default scopes, retaining `openid`
+and `local_username`; MFA, PKCE and RS256 settings were preserved.
 
-Grafana CT 122 runs 13.2.4. Its OAuth signup and role sync are enabled, but
-`allow_assign_grafana_admin=false` and its existing role expression only maps
-app-specific `grafana-admin` / `grafana-editor` roles. The proposed change
-prepends `contains(groups || '[]', 'admin') && 'GrafanaAdmin' ||` to that
-existing expression, sets `allow_assign_grafana_admin=true`, and appends
-`groups` to OAuth scopes. Its Rauthy client already includes `groups` in the
-default scopes. Back up the private config before editing; a brief Grafana
-restart and fresh owner SSO are required. Other users retain the existing
-role expression. Lab2 PBS CT 800 runs 4.2.8 and has automatic OIDC user
-creation, but its administrator authorization still needs separate inspection.
+A fresh owner SSO successfully logged in as `pao87@rauthy`. Native checks
+confirmed membership in `admin-rauthy`, removal from the old local `Admin`
+group, the propagated root ACL, and 47 effective root privileges including
+`Sys.Modify`. The signed-in browser displayed the permissions page and all
+three cluster nodes. No node restart was required.
 
-These follow-ups have not been applied. See the upstream
+Grafana CT 122 runs 13.2.4. OAuth signup and role sync remain enabled. Its role
+expression now prepends
+`contains(groups || '[]', 'admin') && 'GrafanaAdmin' ||` to the original
+`grafana-admin` / `grafana-editor` / Viewer expression.
+`allow_assign_grafana_admin=true` and OAuth scopes now include `groups`.
+Its Rauthy client already included `groups` in the default scopes. After a
+brief successful restart, a fresh personal-account Rauthy login succeeded.
+The native database showed server `is_admin=1` and organization role `Admin`,
+and the browser opened Administration. Other users retain the original role
+expression. No dashboards or data sources were changed.
+
+Private backups are under `/root/global-admin-backup-20261020` on Foxtrot
+(`user.cfg`, `domains.cfg`) and inside CT 122 (`grafana.ini`, a consistent
+`grafana.db` backup with integrity check `ok`). For rollback, review subsequent
+changes before restoring these files. Restore the old local PVE membership
+alongside realm/ACL rollback; otherwise an owner already synchronized out of
+`Admin` would lose that legacy grant. Restoring Grafana's config and restarting
+reverts future SSO role mapping; existing server-admin flags and sessions need
+explicit review or restoration of the saved database for immediate rollback.
+
+Lab2 PBS CT 800 runs 4.2.8 and has automatic OIDC user creation, but its
+administrator authorization still needs separate inspection.
+
+See the upstream
 [Proxmox group mapping documentation](https://github.com/proxmox/pve-docs/blob/master/pveum.adoc#groups-mapping)
 and [Grafana OAuth documentation](https://grafana.com/docs/grafana/latest/setup-grafana/configure-access/configure-authentication/generic-oauth/).
 
