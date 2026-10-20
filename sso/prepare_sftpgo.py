@@ -24,6 +24,8 @@ def stage_config(config):
     admin_binding.update(port=8082, address='127.0.0.1', enable_web_admin=True, enable_web_client=False)
     for binding in (file_binding, admin_binding):
         oidc = binding['oidc']
+        # New Rauthy identities need no legacy per-user local_username attribute.
+        oidc['username_field'] = 'preferred_username'
         oidc['scopes'] = list(dict.fromkeys(oidc.get('scopes', []) + ['groups']))
         oidc['custom_fields'] = list(dict.fromkeys(oidc.get('custom_fields', []) + ['groups']))
         # Only the local proxy may supply client-IP / secure-cookie headers.

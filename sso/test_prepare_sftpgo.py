@@ -24,6 +24,7 @@ class RoutingTests(unittest.TestCase):
             self.assertEqual(binding['address'], '127.0.0.1')
             self.assertEqual(binding['proxy_mode'], 0)
             self.assertEqual(binding['oidc']['client_secret'], 'preserve-secret')
+            self.assertEqual(binding['oidc']['username_field'], 'preferred_username')
             self.assertIn('groups', binding['oidc']['custom_fields'])
         self.assertEqual(result['ftpd'], original['ftpd'])
         self.assertEqual(result['sftpd'], original['sftpd'])
