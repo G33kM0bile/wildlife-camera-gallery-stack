@@ -48,10 +48,12 @@ change, the owner's personal Rauthy account successfully entered both SFTPGo
 WebClient and WebAdmin; new `pao87` accounts were provisioned while the legacy
 `PAO87` accounts remained intact. The file portal displayed the camera folders
 and upload controls, and WebAdmin displayed user and administrator management.
-Camera-settings SSO reached the callback but Rauthy rejected the existing
-client secret (HTTP 401). The operator has been asked to synchronize that
-credential; camera SSO acceptance remains pending. No hunter identities or
-production test photos were created, and no camera settings were saved.
+Camera-settings SSO initially failed because Rauthy rejected the existing
+client secret (HTTP 401). After the operator synchronized the secret in CT 107,
+the camera service was restarted and a fresh SSO login successfully opened the
+authenticated camera settings editor, including its save controls. No hunter
+identities or production test photos were created, and no camera settings
+were saved. New-hunter end-to-end mutation checks remain pending.
 
 ## Camera setup
 
